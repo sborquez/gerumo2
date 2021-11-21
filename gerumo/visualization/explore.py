@@ -64,8 +64,8 @@ def plot_telescope_geometry(tel_type, pixel_positions, num_pixels=None):
     plt.show()
 
 
-def plot_observation_scatter(charge, peakpos, pixel_positions, telescope_type=None, event_unique_id=None):
-    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(12,6))
+def plot_observation_scatter(charge, peakpos, mask, pixel_positions, telescope_type=None, event_unique_id=None):
+    fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(20,6))
     ax1.set_title("Charge")
     divider = make_axes_locatable(ax1)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -77,6 +77,9 @@ def plot_observation_scatter(charge, peakpos, pixel_positions, telescope_type=No
     cax = divider.append_axes("right", size="5%", pad=0.05)
     im = ax2.scatter(pixel_positions[0], pixel_positions[1], c=peakpos)
     plt.colorbar(im, cax=cax)
+
+    ax3.set_title("Mask")
+    im = ax3.scatter(pixel_positions[0], pixel_positions[1], c=mask)
 
     if event_unique_id is None:
         title = f"{'' if telescope_type is None else telescope_type}"
