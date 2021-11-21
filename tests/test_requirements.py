@@ -13,6 +13,7 @@ def test_scipy():
 
 def test_utils():
     import fvcore
+    import omegaconf
     import tables
     
 def test_cta():
