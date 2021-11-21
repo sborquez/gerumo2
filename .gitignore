@@ -19,5 +19,4 @@ docs/build_*
 .old
 .wip
 .diego
-
 tools/output
