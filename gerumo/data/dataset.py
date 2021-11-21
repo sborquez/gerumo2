@@ -117,7 +117,7 @@ def extract_data(hdf5_filepath):
         })
     array_data = pd.DataFrame(array_data)
     n_telescopes = len(array_data)
-    obs_counter = np.zeros(n_telescopes)
+    obs_counter = np.zeros(n_telescopes, dtype=int)
     telescopes_ids = np.arange(1 , 1+n_telescopes)
     try:
         for event_gt, triggers in zip(hdf5_file.root[event_info_table], hdf5_file.root[event_triggers_table]):
