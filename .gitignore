@@ -18,3 +18,5 @@ docs/build_*
 .vscode
 .old
 .wip
+
+tools/output

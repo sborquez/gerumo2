@@ -1,7 +1,9 @@
 import sys
 sys.path.insert(1, '..')
 
-from gerumo.data.dataset import generate_dataset
+from gerumo.data.dataset import (
+    generate_dataset, load_dataset, describe_dataset
+)
 import argparse
 from glob import glob
 from os import path
@@ -36,33 +38,13 @@ if __name__ == "__main__":
         
     # Process the list of files
     if len(files) > 0:
-        events_path, telescopes_path = generate_dataset(
+        events_folder, telescopes_folder = generate_dataset(
             file_paths=files, output_folder=args.output, append=not args.overwrite
         )
     else:
         raise ValueError(f"folder or files not set correctly. (len(files)={len(files)})")
 
-    # dataset = load_dataset(events_path, telescopes_path)
+    dataset = load_dataset(events_folder, telescopes_folder)
     
-    # print("Dataset")
-    # describe_dataset(dataset)
-    
-    # if split > 0:
-    #     train_dataset, val_dataset = split_dataset(dataset, split)
-
-    #     save_dataset(train_dataset, output, "train")
-    #     save_dataset(val_dataset, output, "validation")
-
-    #     print("\ntrain_dataset:")
-    #     describe_dataset(train_dataset)
-        
-    #     print("\nval_dataset:")
-    #     describe_dataset(val_dataset)
-
-    # if split == 0:
-
-    #     save_dataset(dataset, output, "test")
-   
-    #     print("\ntest_dataset:")
-    #     describe_dataset(dataset)
-
+    print("Dataset")
+    describe_dataset(dataset)
