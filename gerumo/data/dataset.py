@@ -132,6 +132,7 @@ def extract_data(hdf5_filepath):
 
     return pd.DataFrame(events_data), pd.DataFrame(telescopes_data)
 
+
 def append_to_parquet_table(dataframe, filepath=None, writer=None):
     """Method writes/append dataframes in parquet format.
 
@@ -149,6 +150,7 @@ def append_to_parquet_table(dataframe, filepath=None, writer=None):
         writer = pq.ParquetWriter(filepath, table.schema)
     writer.write_table(table=table)
     return writer
+
 
 def generate_dataset(file_paths, output_folder, append=False):
     """Generate events.csv and telescope.csv files. 
@@ -197,7 +199,7 @@ def generate_dataset(file_paths, output_folder, append=False):
     # Appending index
     file_counter = len(listdir(events_folder))
     events_filepath = path.join(events_folder, f"events{file_counter}.parquet")
-    telescope_filepath = path.join(telescopes_folder, f"telescopes{file_counter}.parquet")
+    telescopes_filepath = path.join(telescopes_folder, f"telescopes{file_counter}.parquet")
     
     # Iterate over h5 files 
     total_events = 0
@@ -210,7 +212,7 @@ def generate_dataset(file_paths, output_folder, append=False):
             total_events += len(events_data)
             total_observations += len(telescopes_data)
             events_writer = append_to_parquet_table(events_data, filepath=events_filepath, writer=events_writer)
-            telescope_writer = append_to_parquet_table(telescopes_data, filepath=telescope_filepath, writer=telescope_writer)
+            telescope_writer = append_to_parquet_table(telescopes_data, filepath=telescopes_filepath, writer=telescope_writer)
         except KeyboardInterrupt:
             logging.warning("Extraction stopped.")
             break
@@ -224,11 +226,11 @@ def generate_dataset(file_paths, output_folder, append=False):
         events_writer.close()
         telescope_writer.close()
     logging.info(f"Events file: {events_filepath}")
-    logging.info(f"Telescopes file: {telescope_filepath}")
-    return events_filepath, telescope_filepath
+    logging.info(f"Telescopes file: {telescopes_filepath}")
+    return events_folder, telescopes_folder
 
 
-def split_dataset(dataset, validation_ratio=0.1):
+def split_dataset(dataset, validation_ratio=0.1, balanced_files=True):
     """Split dataset in train and validation sets using events and a given ratio. 
     
     This split enforce the restriction of don't mix hdf5 files between sets in a 
@@ -237,7 +239,7 @@ def split_dataset(dataset, validation_ratio=0.1):
     Args:
         dataset (pd.DataFrame) : Generated dataset.
         validation_ratio (float, optional) : Split proportion. Defaults to 0.1
-
+        balanced_files (bool, optional) : Keep same sources files on splits.
     Returns:
         (pd.DataFrame, pd.DataFrame) : Splited dataset.
     """
@@ -250,8 +252,11 @@ def split_dataset(dataset, validation_ratio=0.1):
     val_events_n = int(total_events * validation_ratio)
     train_events_n = total_events - val_events_n
 
-    # enforce source balance
-    dataset = dataset.sort_values("source")
+    # source balance
+    if balanced_files:
+        dataset = dataset.sort_values("source")
+    else:
+        dataset = dataset.sample(frac=1) # shuffle
 
     # split by events
     events = dataset.event_unique_id.unique()
@@ -265,32 +270,35 @@ def split_dataset(dataset, validation_ratio=0.1):
     return train_dataset, val_dataset
 
 
-def load_dataset(events_path, telescopes_path, replace_folder=None):
+def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):
     """Load events.csv and telescopes.csv files into dataframes.
     
     Args:
-        events_path (str) : Path to events.csv file.
-        telescopes_path (str) : Path to telescopes.csv file.
+        events_path (str) : Path to events parquet file or folder.
+        telescopes_path (str) : Path to telescopes parquet file or folder.
         replace_folder (str, optional) : Path to folder containing hdf5 files.
             Replace the folder column from csv file. Usefull if the csv files
             are shared between different machines. Default None, means no change
             applied. Defaults to None.
+        merge (bool, optional) : Return merged dataset.
 
     Returns:
         pd.DataFrame : Dataset of observations for reference telescope images.
     """
     # Load data
-    events_data = pd.read_csv(events_path, delimiter=";")
-    telescopes_data = pd.read_csv(telescopes_path, delimiter=";")
+    events_data = pd.read_parquet(events_path)
+    telescopes_data = pd.read_parquet(telescopes_path)
 
     # Change dataset folder
     if replace_folder is not None:
         events_data.folder = replace_folder
 
-    # Join tables
-    dataset = pd.merge(events_data, telescopes_data, on="event_unique_id", validate="1:m")
-
-    return dataset
+    if merge:
+        # Join tables
+        dataset = pd.merge(events_data, telescopes_data, on="event_unique_id", validate="1:m")
+        return dataset
+    else:
+        return events_data, telescopes_data
 
 
 def save_dataset(dataset, output_folder, prefix=None):
@@ -304,23 +312,20 @@ def save_dataset(dataset, output_folder, prefix=None):
     Returns:
         tuple(str): events.csv and telescope.csv path.
     """
-
+    # Unmerge dataset
     event_drop = [field for field in _telescope_fieldnames if field != 'event_unique_id']
     telescope_drop = [field for field in _event_fieldnames if field != 'event_unique_id']
-
     telescope_data = dataset.drop(columns=telescope_drop)
     event_data = dataset.drop(columns=event_drop)
     event_data = event_data.drop_duplicates()
-
-    event_path = "event.csv" if prefix is None else f"{prefix}_events.csv"
+    # Save events data
+    event_path = "event.parquet" if prefix is None else f"{prefix}_events.parquet"
     event_path = path.join(output_folder, event_path)
-
-    telescope_path = "telescopes.csv" if prefix is None else f"{prefix}_telescopes.csv"
+    pq.write_table(pa.Table.from_pandas(event_data), event_path)
+    # Save telescopes data
+    telescope_path = "telescopes.parquet" if prefix is None else f"{prefix}_telescopes.parquet"
     telescope_path = path.join(output_folder, telescope_path)
-
-    event_data.to_csv(event_path, sep=";", index=False)
-    telescope_data.to_csv(telescope_path, sep=";", index=False)
-
+    pq.write_table(pa.Table.from_pandas(telescope_data), telescope_path)
     return event_path, telescope_path
 
 
