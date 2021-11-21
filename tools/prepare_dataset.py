@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(1, '..')
 
-from gerumo.data import generate_dataset
+from gerumo.data.dataset import generate_dataset
 import argparse
 from glob import glob
 from os import path
@@ -15,11 +15,11 @@ if __name__ == "__main__":
                     help="List of hdf5 files, if is not empty, ignore folder argument.")
     gp.add_argument("-f", "--file", type=str, default=None,
                     help="File with list of hdf5 files, if is not None, ignore folder argument.")
-    parser.add_argument("-o", "--output", type=str, default="./output", 
+    parser.add_argument("-o", "--output", type=str, required=True, 
                     help="Ouput folder.")
     parser.add_argument("-s", "--split", type=float, default=0.1,
                     help="Validation ratio for split data.")
-    parser.add_argument("-a", "--append", dest='append_write', action='store_true')       
+    parser.add_argument("-w", "--overwrite", dest='overwrite', action='store_true')       
     args = parser.parse_args()
 
     # Load files from a txt list of h5
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     # Process the list of files
     if len(files) > 0:
         events_path, telescopes_path = generate_dataset(
-            files_path=files, output_folder=args.output, append=args.append
+            file_paths=files, output_folder=args.output, append=not args.overwrite
         )
     else:
         raise ValueError(f"folder or files not set correctly. (len(files)={len(files)})")

@@ -6,15 +6,18 @@ This module handle data files and generate the datasets used
 by the models.
 """
 
-from os import path
+from os import (makedirs, path)
+from shutil import rmtree
 from glob import glob
+from posix import listdir
 from tqdm import tqdm
 import uuid
-import csv
 import tables
 import logging
 import pandas as pd
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 # TODO
 _telescope_fieldnames = []
@@ -23,7 +26,9 @@ _event_fieldnames = []
 def extract_data(hdf5_filepath):
     """Extract data from one hdf5 file."""
     #TODO
-    return None, None
+    mockup1 = pd.DataFrame([{"a": np.random.randint(10), "b": np.random.randint(10)}])
+    mockup2 = pd.DataFrame([{"a": np.random.randint(10), "b": np.random.randint(10)}])
+    return mockup1, mockup2
 
     hdf5_file = tables.open_file(hdf5_filepath, "r")
     source = path.basename(hdf5_filepath)
@@ -125,10 +130,27 @@ def extract_data(hdf5_filepath):
         logging.debug(f"Total events: {len(events_data)}")
         logging.debug(f"Total observations: {len(telescopes_data)}")
 
-    return events_data, telescopes_data
+    return pd.DataFrame(events_data), pd.DataFrame(telescopes_data)
 
+def append_to_parquet_table(dataframe, filepath=None, writer=None):
+    """Method writes/append dataframes in parquet format.
 
-def generate_dataset(file_paths, output_folder="./output", append=False):
+    This method is used to write pandas DataFrame as pyarrow Table in parquet format. If the methods is invoked
+    with writer, it appends dataframe to the already written pyarrow table.
+    Args
+        dataframe (pd.DataFrame): df to be written in parquet format.
+        filepath (str): target file location for parquet file.
+        writer (ParquetWriter): object to write pyarrow tables in parquet format.
+        ParquetWriter object. This can be passed in the subsequenct method calls to append DataFrame
+        in the pyarrow Table
+    """
+    table = pa.Table.from_pandas(dataframe)
+    if writer is None:
+        writer = pq.ParquetWriter(filepath, table.schema)
+    writer.write_table(table=table)
+    return writer
+
+def generate_dataset(file_paths, output_folder, append=False):
     """Generate events.csv and telescope.csv files. 
 
     Files generated contains information about the events and their observations
@@ -147,51 +169,62 @@ def generate_dataset(file_paths, output_folder="./output", append=False):
     """
     # hdf5 files
     files = [path.abspath(file) for file in file_paths]
-
+    
     # Check if list is not empty
+    logging.debug(f"{len(files)} files found.")
     if len(files) == 0:
         raise FileNotFoundError
-    logging.debug(f"{len(files)} files found.")
-
-    # csv files
-    mode = "a" if append else "w"
-    events_filepath = path.join(output_folder, "events.csv")
-    telescope_filepath = path.join(output_folder, "telescopes.csv")
-    events_info_csv = open(events_filepath, mode=mode)
-    telescope_info_csv = open(telescope_filepath, mode=mode)
-
-    # csv writers
-    telescope_writer = csv.DictWriter(telescope_info_csv, delimiter=";",
-                                      fieldnames=_telescope_fieldnames, lineterminator="\n")
-    events_writer = csv.DictWriter(events_info_csv, delimiter=';',
-                                   fieldnames=_event_fieldnames, lineterminator="\n")
-
-    if not append:
-        events_writer.writeheader()
-        telescope_writer.writeheader()
-
+    
+    # Dataset folders
+    events_folder = path.join(output_folder, "events")
+    telescopes_folder = path.join(output_folder, "telescopes")
+    
+    # If overwrite, remove existing files
+    if not append and path.exists(output_folder):
+        events_files = len(listdir(events_folder)) if path.exists(events_folder) else 0
+        telescopes_files = len(listdir(telescopes_folder)) if path.exists(telescopes_folder) else 0 
+        logging.warning(f"Removing existing datasets: {events_files + telescopes_files} files")
+        rmtree(events_folder)
+        rmtree(telescopes_folder)
+    
+    # If output folder doesnt exists
+    if not path.exists(output_folder):
+        logging.info("creating folder {telescopes_folder}")
+        logging.info("creating folder {events_folder}")
+    makedirs(path.join(output_folder, "telescopes"), exist_ok=True)
+    makedirs(path.join(output_folder, "events"), exist_ok=True)
+    
+    # Appending index
+    file_counter = len(listdir(events_folder))
+    events_filepath = path.join(events_folder, f"events{file_counter}.parquet")
+    telescope_filepath = path.join(telescopes_folder, f"telescopes{file_counter}.parquet")
+    
+    # Iterate over h5 files 
     total_events = 0
     total_observations = 0
+    events_writer, telescope_writer = None, None
     for file in tqdm(files):
         logging.info(f"Extracting: {file}")
-        events_data, telescopes_data = extract_data(file, version)
-        total_events += len(events_data)
-        total_observations += len(telescopes_data)
         try:
-            events_writer.writerows(events_data)
-            telescope_writer.writerows(telescopes_data)
+            events_data, telescopes_data = extract_data(file)
+            total_events += len(events_data)
+            total_observations += len(telescopes_data)
+            events_writer = append_to_parquet_table(events_data, filepath=events_filepath, writer=events_writer)
+            telescope_writer = append_to_parquet_table(telescopes_data, filepath=telescope_filepath, writer=telescope_writer)
         except KeyboardInterrupt:
-            logging.info("Extraction stopped.")
+            logging.warning("Extraction stopped.")
             break
     else:
         logging.info("Extraction ended successfully!")
     logging.info(f"Total events: {total_events}")
     logging.info(f"Total observations: {total_observations}")
 
-    # close files
-    telescope_info_csv.close()
-    events_info_csv.close()
-
+    # close writers
+    if (events_writer is not None) or (telescope_writer is not None):
+        events_writer.close()
+        telescope_writer.close()
+    logging.info(f"Events file: {events_filepath}")
+    logging.info(f"Telescopes file: {telescope_filepath}")
     return events_filepath, telescope_filepath
 
 
