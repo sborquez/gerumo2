@@ -18,5 +18,5 @@ docs/build_*
 .vscode
 .old
 .wip
-
+.diego
 tools/output
