@@ -54,7 +54,7 @@ event_fieldnames = [
     'event_id',         # hdf5 event identifier
     'obs_id',           # TBA
     'source',           # hfd5 filename
-    'root',             # Container hdf5 folder
+    'folder',             # Container hdf5 folder
     'true_core_x',      # Ground x coordinate
     'true_core_y',      # Ground y coordinate
     'true_h_first_int', # Height firts impact
@@ -83,14 +83,14 @@ hillas_parameters = [
 telescope_fieldnames = [
     # Array info
     'tel_id',               # Unique telescope identifier for tel_xxx=f"tel_{tel_id.zfil(3)}"
-    'name'                  # Telescope name
+    'name',                 # Telescope name
     'type',                 # Telescope type
-    'camera_type'           # Telescope camera
+    'camera_type',          # Telescope camera
     'pos_x',                # x array coordinate
     'pos_y',                # y array coordinate
     'pos_z',                # z array coordinate
     # Observation info
-    'observation_idx'       # Observation row index in image tel_xxx table
+    'observation_idx',      # Observation row index in image tel_xxx table
     'event_unique_id',      # gerumo's event identifier
 ] + hillas_parameters
 
@@ -119,8 +119,9 @@ def extract_data(hdf5_filepath):
     n_telescopes = len(array_data)
     obs_counter = np.zeros(n_telescopes, dtype=int)
     telescopes_ids = np.arange(1 , 1+n_telescopes)
+    n_events = len(hdf5_file.root[event_info_table])
     try:
-        for event_gt, triggers in zip(hdf5_file.root[event_info_table], hdf5_file.root[event_triggers_table]):
+        for event_gt, triggers in tqdm(zip(hdf5_file.root[event_info_table], hdf5_file.root[event_triggers_table]), total=n_events):
             # Event data
             # add uuid to avoid duplicated event numbers 
             event_unique_id = uuid.uuid4().hex[:20]
@@ -248,8 +249,8 @@ def generate_dataset(file_paths, output_folder, append=False):
     total_events = 0
     total_observations = 0
     events_writer, telescope_writer = None, None
-    for file in tqdm(files):
-        logging.info(f"Extracting: {file}")
+    for i, file in enumerate(files):
+        logging.info(f"Extracting ({i}/{len(files)}: {file}")
         try:
             events_data, telescopes_data = extract_data(file)
             total_events += len(events_data)
@@ -356,8 +357,8 @@ def save_dataset(dataset, output_folder, prefix=None):
         tuple(str): events.csv and telescope.csv path.
     """
     # Unmerge dataset
-    event_drop = [field for field in _telescope_fieldnames if field != 'event_unique_id']
-    telescope_drop = [field for field in _event_fieldnames if field != 'event_unique_id']
+    event_drop = [field for field in telescope_fieldnames if field != 'event_unique_id']
+    telescope_drop = [field for field in event_fieldnames if field != 'event_unique_id']
     telescope_data = dataset.drop(columns=telescope_drop)
     event_data = dataset.drop(columns=event_drop)
     event_data = event_data.drop_duplicates()
@@ -382,7 +383,7 @@ def describe_dataset(dataset, save_to=None):
     files = dataset.source.nunique()
     events = dataset.event_unique_id.nunique()
     obs = len(dataset)
-    by_telescope = dataset.type.value_counts()
+    by_telescope = dataset.camera_type.value_counts()
     print('files', files)
     print('events', events)
     print('observations', obs)
@@ -411,9 +412,9 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True):
         pd.DataFrame: Dataset with aggregate information.
     """
     if az:
-        dataset["az"] = dataset["az"].apply(lambda rad: np.arctan2(np.sin(rad), np.cos(rad)))
+        dataset["true_az"] = dataset["true_az"].apply(lambda rad: np.arctan2(np.sin(rad), np.cos(rad)))
     if log10_mc_energy:
-        dataset["log10_mc_energy"] = dataset["mc_energy"].apply(lambda energy: np.log10(energy))
+        dataset["true_log10_energy"] = dataset["true_energy"].apply(lambda energy: np.log10(energy))
     if hdf5_file:
         dataset["hdf5_filepath"] = dataset[["folder", "source"]].apply(lambda x: path.join(x[0], x[1]), axis=1)
     return dataset
