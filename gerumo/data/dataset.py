@@ -19,106 +19,149 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-# TODO
-_telescope_fieldnames = []
-_event_fieldnames = []
+"""
+Tables routes
+============
+"""
+# Paremeters and images
+event_info_table = "simulation/event/subarray/shower"     # Ground Truth
+event_triggers_table = "/dl1/event/subarray/trigger"      # Which telescopes were activates
+array_layout = "configuration/instrument/subarray/layout" # Array info 
+# Images template
+telescope_parameters = "/dl1/event/telescope/parameters/tel_{0}"  # Hillas parameters
+telescope_images = "/dl1/event/telescope/images/tel_{0}"          # Time peaks and charge images
+# Cameras
+LST_geom='/configuration/instrument/telescope/camera/geometry_LSTCam'
+CHEC_geom='/configuration/instrument/telescope/camera/geometry_CHEC'
+Flash_geom='/configuration/instrument/telescope/camera/geometry_FlashCam'
+Nectar_geom='/configuration/instrument/telescope/camera/geometry_NectarCam'
+geometry = {
+    'LST': LST_geom, 
+    'MSTF': Flash_geom, 
+    'SSTC': CHEC_geom,
+    'MSTN': Nectar_geom
+}
+cameras=list(geometry.values())
+telescopes_names=list(geometry.keys())
+
+"""
+Parquet dataset columns
+=======================
+"""
+# Events data
+event_fieldnames = [
+    'event_unique_id',  # gerumo's event identifier
+    'event_id',         # hdf5 event identifier
+    'obs_id',           # TBA
+    'source',           # hfd5 filename
+    'root',             # Container hdf5 folder
+    'true_core_x',      # Ground x coordinate
+    'true_core_y',      # Ground y coordinate
+    'true_h_first_int', # Height firts impact
+    'true_alt',         # Altitute
+    'true_az',          # Azimut
+    'true_energy',      # Energy
+    'particle_type'     # Particle type
+]
+
+# Telescope data
+# Observation Hillas parameters
+hillas_parameters = [
+    'hillas_intensity',
+	'hillas_x',
+	'hillas_y',
+	'hillas_r',
+	'hillas_phi',
+	'hillas_length',
+	'hillas_length_uncertainty',
+	'hillas_width',
+	'hillas_width_uncertainty',
+	'hillas_psi',
+	'hillas_skewness',
+	'hillas_kurtosis'
+]
+telescope_fieldnames = [
+    # Array info
+    'tel_id',               # Unique telescope identifier for tel_xxx=f"tel_{tel_id.zfil(3)}"
+    'name'                  # Telescope name
+    'type',                 # Telescope type
+    'camera_type'           # Telescope camera
+    'pos_x',                # x array coordinate
+    'pos_y',                # y array coordinate
+    'pos_z',                # z array coordinate
+    # Observation info
+    'observation_idx'       # Observation row index in image tel_xxx table
+    'event_unique_id',      # gerumo's event identifier
+] + hillas_parameters
 
 def extract_data(hdf5_filepath):
     """Extract data from one hdf5 file."""
-    #TODO
-    mockup1 = pd.DataFrame([{"a": np.random.randint(10), "b": np.random.randint(10)}])
-    mockup2 = pd.DataFrame([{"a": np.random.randint(10), "b": np.random.randint(10)}])
-    return mockup1, mockup2
-
     hdf5_file = tables.open_file(hdf5_filepath, "r")
     source = path.basename(hdf5_filepath)
     folder = path.dirname(hdf5_filepath)
-
+    particle_type = source.split("_")[0]
+    # Extracted data containers
     events_data = []
     telescopes_data = []
-
     # Array data
-    array_data = {}
-    # Telescopes Ids
-    real_telescopes_id = {}
-    ## 'activated_telescopes' are not the real id for each telescopes. These activated_telecopes
-    ## are indices related to the event table, but not with  the array information table (telescope info).
-    ## In the array info table, all telescope (from different types) are indexed together starting from 1.
-    ## But they are in orden, grouped by type (lst, mst and then sst). In the other hand, the Event table
-    ## has 3 indices starting from 0, for each telescope type. 
-    ## 'real_telescopes_id' translate events indices ('activation_telescope_id') to array ids ('telescope_id').
-
-    for telescope in hdf5_file.root[_array_info_table[version]]:
-        telescope_type = telescope[_array_attributes[version]["type"]]
-        telescope_type = telescope_type.decode("utf-8") if isinstance(telescope_type, bytes) else telescope_type
-        telescope_id = telescope[_array_attributes[version]["telescope_id"]]
-        # HERE
-        if telescope_type not in array_data:
-            array_data[telescope_type] = {}
-            real_telescopes_id[telescope_type] = []
-
-        array_data[telescope_type][telescope_id] = {
-            "id": telescope_id,
-            "x": telescope[_array_attributes[version]["x"]],
-            "y": telescope[_array_attributes[version]["y"]],
-            "z": telescope[_array_attributes[version]["z"]],
-        }
-        real_telescopes_id[telescope_type].append(telescope_id)
-
-    # add uuid to avoid duplicated event numbers 
+    array_data = []
+    for telescope in hdf5_file.root[array_layout]:
+        array_data.append({
+            'tel_id': telescope['tel_id'],
+            'name': telescope['name'].decode("utf-8"),
+            'type': telescope['type'].decode("utf-8"),
+            'camera_type': telescope['camera_type'].decode("utf-8"),
+            'pos_x': telescope['pos_x'],
+            'pos_y': telescope['pos_y'],
+            'pos_z': telescope['pos_z'],
+        })
+    array_data = pd.DataFrame(array_data)
+    n_telescopes = len(array_data)
+    obs_counter = np.zeros(n_telescopes)
+    telescopes_ids = np.arange(1 , 1+n_telescopes)
     try:
-        for i, event in enumerate(hdf5_file.root[_events_table[version]]):
+        for event_gt, triggers in zip(hdf5_file.root[event_info_table], hdf5_file.root[event_triggers_table]):
             # Event data
+            # add uuid to avoid duplicated event numbers 
             event_unique_id = uuid.uuid4().hex[:20]
-            event_data = dict(
-                event_unique_id=event_unique_id,
-                event_id=event[_event_attributes[version]["event_id"]],
-                source=source,
-                folder=folder,
-                core_x=event[_event_attributes[version]["core_x"]],
-                core_y=event[_event_attributes[version]["core_y"]],
-                h_first_int=event[_event_attributes[version]["h_first_int"]],
-                alt=event[_event_attributes[version]["alt"]],
-                az=event[_event_attributes[version]["az"]],
-                mc_energy=event[_event_attributes[version]["mc_energy"]]
-            )
-            events_data.append(event_data)
-
             # Observations data
-            ## For each telescope type
-            for telescope_type in TELESCOPES:
-                telescope_type_alias = TELESCOPES_ALIAS[version][telescope_type]
-                telescope_indices = f"{telescope_type_alias}_indices"
-                telescopes = event[telescope_indices]
-                # number of activated telescopes
-                if version == "ML2":
-                    telescope_multiplicity = f"{telescope_type_alias}_multiplicity"
-                    multiplicity = event[telescope_multiplicity]
-                else:
-                    multiplicity = np.sum(telescopes != 0)
-
-                if multiplicity == 0:  # No telescope of this type were activated
-                    continue
-
-                # Select activated telescopes
-                activation_mask = telescopes != 0
-                activated_telescopes = np.arange(len(telescopes))[activation_mask]
-                observation_indices = telescopes[activation_mask]
-
-                ## For each activated telescope
-                for activate_telescope, observation_indice in zip(activated_telescopes, observation_indices):
-                    # Telescope Data
-                    real_telescope_id = real_telescopes_id[telescope_type_alias][activate_telescope]
-                    telescope_data = dict(
-                        telescope_id=real_telescope_id,
-                        event_unique_id=event_unique_id,
-                        type=telescope_type,
-                        x=array_data[telescope_type_alias][real_telescope_id]["x"],
-                        y=array_data[telescope_type_alias][real_telescope_id]["y"],
-                        z=array_data[telescope_type_alias][real_telescope_id]["z"],
-                        observation_indice=observation_indice
-                    )
-                    telescopes_data.append(telescope_data)
+            mask = triggers["tels_with_trigger"]
+            triggered_telescopes_ids = list(telescopes_ids[mask])
+            triggered_telescopes_obs_row = list(obs_counter[mask])
+            observers = len(triggered_telescopes_obs_row)
+            for telescope_id, obs_row in zip(triggered_telescopes_ids,triggered_telescopes_obs_row):
+                # Array info
+                telescope_array_info = dict(array_data.iloc[telescope_id - 1])
+                # Observation info
+                telescope_id = str(telescope_id).zfill(3)
+                parameters = hdf5_file.root[telescope_parameters.format(telescope_id)][obs_row]
+                assert event_gt['event_id'] == parameters['event_id']
+                telescope_parameters_info = {hp: parameters[hp] for hp in hillas_parameters}
+                telescope_event_info = {
+                    'event_unique_id': event_unique_id, "observation_idx": obs_row
+                }
+                # 
+                telescopes_data.append({
+                    **telescope_event_info,
+                    **telescope_array_info,
+                    **telescope_parameters_info
+                })
+            obs_counter[mask] += 1
+            events_data.append({    
+                'event_unique_id': event_unique_id,
+                'event_id': event_gt['event_id'],
+                'obs_id': event_gt['obs_id'],
+                'source': source,
+                'folder': folder,
+                'observers': observers,
+                'true_core_x': event_gt['true_core_x'],
+                'true_core_y': event_gt['true_core_y'],
+                'true_h_first_int': event_gt['true_h_first_int'],
+                'true_alt': event_gt['true_alt'],
+                'true_az': event_gt['true_az'],
+                'true_energy': event_gt['true_energy'],
+                'particle_type': particle_type
+            })
     except KeyboardInterrupt:
         logging.info("Extraction stopped.")
     except Exception as err:
