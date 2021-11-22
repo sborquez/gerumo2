@@ -77,7 +77,7 @@ _C.CLASSIFICATION.CLASSES = ["gamma", "protron"]
 _C.REGRESSION = CN()
 _C.REGRESSION.TARGET = ["true_az", "true_alt"]
 _C.REGRESSION.TARGET_DOMAIN = [
-    (1.15, 1.3)
+    (1.15, 1.3),
     (-0.25, 0.25)
 ]
 # ---------------------------------------------------------------------------- #
