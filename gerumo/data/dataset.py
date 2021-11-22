@@ -8,7 +8,6 @@ by the models.
 
 from os import (makedirs, path)
 from shutil import rmtree
-from glob import glob
 from posix import listdir
 from tqdm import tqdm
 import uuid
@@ -24,25 +23,15 @@ Tables routes
 ============
 """
 # Paremeters and images
-event_info_table = "simulation/event/subarray/shower"     # Ground Truth
-event_triggers_table = "/dl1/event/subarray/trigger"      # Which telescopes were activates
-array_layout = "configuration/instrument/subarray/layout" # Array info 
+event_info_table = "simulation/event/subarray/shower"  # Ground Truth
+event_triggers_table = "/dl1/event/subarray/trigger"  # Activated telescopes
+array_layout = "configuration/instrument/subarray/layout"  # Array info
 # Images template
-telescope_parameters = "/dl1/event/telescope/parameters/tel_{0}"  # Hillas parameters
-telescope_images = "/dl1/event/telescope/images/tel_{0}"          # Time peaks and charge images
-# Cameras
-LST_geom='/configuration/instrument/telescope/camera/geometry_LSTCam'
-CHEC_geom='/configuration/instrument/telescope/camera/geometry_CHEC'
-Flash_geom='/configuration/instrument/telescope/camera/geometry_FlashCam'
-Nectar_geom='/configuration/instrument/telescope/camera/geometry_NectarCam'
-geometry = {
-    'LST': LST_geom, 
-    'MSTF': Flash_geom, 
-    'SSTC': CHEC_geom,
-    'MSTN': Nectar_geom
-}
-cameras=list(geometry.values())
-telescopes_names=list(geometry.keys())
+# Hillas parameters
+telescope_parameters = "/dl1/event/telescope/parameters/tel_{0}"
+# Time peaks and charge images
+telescope_images = "/dl1/event/telescope/images/tel_{0}"
+
 
 """
 Parquet dataset columns
@@ -50,39 +39,39 @@ Parquet dataset columns
 """
 # Events data
 event_fieldnames = [
-    'event_unique_id',  # gerumo's event identifier
-    'event_id',         # hdf5 event identifier
-    'obs_id',           # TBA
-    'source',           # hfd5 filename
-    'folder',             # Container hdf5 folder
-    'true_core_x',      # Ground x coordinate
-    'true_core_y',      # Ground y coordinate
-    'true_h_first_int', # Height firts impact
-    'true_alt',         # Altitute
-    'true_az',          # Azimut
-    'true_energy',      # Energy
-    'particle_type'     # Particle type
+    'event_unique_id',   # gerumo's event identifier
+    'event_id',          # hdf5 event identifier
+    'obs_id',            # TBA
+    'source',            # hfd5 filename
+    'folder',            # Container hdf5 folder
+    'true_core_x',       # Ground x coordinate
+    'true_core_y',       # Ground y coordinate
+    'true_h_first_int',  # Height firts impact
+    'true_alt',          # Altitute
+    'true_az',           # Azimut
+    'true_energy',       # Energy
+    'particle_type'      # Particle type
 ]
 
 # Telescope data
 # Observation Hillas parameters
 hillas_parameters = [
     'hillas_intensity',
-	'hillas_x',
-	'hillas_y',
-	'hillas_r',
-	'hillas_phi',
-	'hillas_length',
-	'hillas_length_uncertainty',
-	'hillas_width',
-	'hillas_width_uncertainty',
-	'hillas_psi',
-	'hillas_skewness',
-	'hillas_kurtosis'
+    'hillas_x',
+    'hillas_y',
+    'hillas_r',
+    'hillas_phi',
+    'hillas_length',
+    'hillas_length_uncertainty',
+    'hillas_width',
+    'hillas_width_uncertainty',
+    'hillas_psi',
+    'hillas_skewness',
+    'hillas_kurtosis'
 ]
 telescope_fieldnames = [
     # Array info
-    'tel_id',               # Unique telescope identifier for tel_xxx=f"tel_{tel_id.zfil(3)}"
+    'tel_id',               # Unique identifier tel_xxx=f"tel_{tel_id.zfil(3)}"
     'name',                 # Telescope name
     'type',                 # Telescope type
     'camera_type',          # Telescope camera
@@ -93,6 +82,7 @@ telescope_fieldnames = [
     'observation_idx',      # Observation row index in image tel_xxx table
     'event_unique_id',      # gerumo's event identifier
 ] + hillas_parameters
+
 
 def extract_data(hdf5_filepath):
     """Extract data from one hdf5 file."""
@@ -118,37 +108,42 @@ def extract_data(hdf5_filepath):
     array_data = pd.DataFrame(array_data)
     n_telescopes = len(array_data)
     obs_counter = np.zeros(n_telescopes, dtype=int)
-    telescopes_ids = np.arange(1 , 1+n_telescopes)
+    telescopes_ids = np.arange(1, 1+n_telescopes)
     n_events = len(hdf5_file.root[event_info_table])
     try:
-        for event_gt, triggers in tqdm(zip(hdf5_file.root[event_info_table], hdf5_file.root[event_triggers_table]), total=n_events):
+        pbar = tqdm(
+            zip(hdf5_file.root[event_info_table],
+                hdf5_file.root[event_triggers_table]),
+            total=n_events
+            )
+        for event_gt, triggers in pbar:
             # Event data
-            # add uuid to avoid duplicated event numbers 
+            # add uuid to avoid duplicated event numbers
             event_unique_id = uuid.uuid4().hex[:20]
             # Observations data
             mask = triggers["tels_with_trigger"]
             triggered_telescopes_ids = list(telescopes_ids[mask])
             triggered_telescopes_obs_row = list(obs_counter[mask])
             observers = len(triggered_telescopes_obs_row)
-            for telescope_id, obs_row in zip(triggered_telescopes_ids,triggered_telescopes_obs_row):
+            for telescope_id, obs_row in zip(triggered_telescopes_ids,
+                                             triggered_telescopes_obs_row):
                 # Array info
                 telescope_array_info = dict(array_data.iloc[telescope_id - 1])
                 # Observation info
                 telescope_id = str(telescope_id).zfill(3)
-                parameters = hdf5_file.root[telescope_parameters.format(telescope_id)][obs_row]
+                parameters = hdf5_file.root[telescope_parameters.format(telescope_id)][obs_row]  # noqa: E501
                 assert event_gt['event_id'] == parameters['event_id']
-                telescope_parameters_info = {hp: parameters[hp] for hp in hillas_parameters}
+                telescope_parameters_info = {hp: parameters[hp] for hp in hillas_parameters}  # noqa: E501
                 telescope_event_info = {
-                    'event_unique_id': event_unique_id, "observation_idx": obs_row
+                    'event_unique_id': event_unique_id, "observation_idx": obs_row  # noqa: E501
                 }
-                # 
                 telescopes_data.append({
                     **telescope_event_info,
                     **telescope_array_info,
                     **telescope_parameters_info
                 })
             obs_counter[mask] += 1
-            events_data.append({    
+            events_data.append({
                 'event_unique_id': event_unique_id,
                 'event_id': event_gt['event_id'],
                 'obs_id': event_gt['obs_id'],
@@ -173,6 +168,7 @@ def extract_data(hdf5_filepath):
     finally:
         logging.debug(f"Total events: {len(events_data)}")
         logging.debug(f"Total observations: {len(telescopes_data)}")
+        hdf5_file.close()
 
     return pd.DataFrame(events_data), pd.DataFrame(telescopes_data)
 
@@ -180,14 +176,15 @@ def extract_data(hdf5_filepath):
 def append_to_parquet_table(dataframe, filepath=None, writer=None):
     """Method writes/append dataframes in parquet format.
 
-    This method is used to write pandas DataFrame as pyarrow Table in parquet format. If the methods is invoked
-    with writer, it appends dataframe to the already written pyarrow table.
+    This method is used to write pandas DataFrame as pyarrow Table in parquet
+    format. If the methods is invoked with writer, it appends dataframe to the
+    already written pyarrow table.
     Args
         dataframe (pd.DataFrame): df to be written in parquet format.
         filepath (str): target file location for parquet file.
-        writer (ParquetWriter): object to write pyarrow tables in parquet format.
-        ParquetWriter object. This can be passed in the subsequenct method calls to append DataFrame
-        in the pyarrow Table
+        writer (ParquetWriter): object to write pyarrow tables into parquet.
+        ParquetWriter object. This can be passed in the subsequent method
+        calls to append DataFrame in the pyarrow Table.
     """
     table = pa.Table.from_pandas(dataframe)
     if writer is None:
@@ -197,55 +194,55 @@ def append_to_parquet_table(dataframe, filepath=None, writer=None):
 
 
 def generate_dataset(file_paths, output_folder, append=False):
-    """Generate events.csv and telescope.csv files. 
-
-    Files generated contains information about the events and their observations
-    and are used to reference the compressed hdf5 files with the data.
+    """Generate events.csv and telescope.csv files.
+    Files generated contains information about the events and their
+    observations and are used to reference the compressed hdf5 files
+    with the data.
 
     Args:
         file_paths (list(str)) : List of path to hdf5 files, use these files
             to generate the dataset.
-        output_folder (str, optional) : Path to folder where dataset files 
+        output_folder (str, optional) : Path to folder where dataset files
             will be saved. Defaults to './output'
-        append (bool, optional): Append new events and telescopes to existing 
+        append (bool, optional): Append new events and telescopes to existing
             files, otherwise create new file. Defaults to False.
 
-    Returns: 
+    Returns:
         tuple(str): events.csv and telescope.csv path.
     """
     # hdf5 files
     files = [path.abspath(file) for file in file_paths]
-    
+
     # Check if list is not empty
     logging.debug(f"{len(files)} files found.")
     if len(files) == 0:
         raise FileNotFoundError
-    
+
     # Dataset folders
     events_folder = path.join(output_folder, "events")
     telescopes_folder = path.join(output_folder, "telescopes")
-    
+
     # If overwrite, remove existing files
     if not append and path.exists(output_folder):
-        events_files = len(listdir(events_folder)) if path.exists(events_folder) else 0
-        telescopes_files = len(listdir(telescopes_folder)) if path.exists(telescopes_folder) else 0 
-        logging.warning(f"Removing existing datasets: {events_files + telescopes_files} files")
+        events_files = len(listdir(events_folder)) if path.exists(events_folder) else 0   # noqa: E501
+        telescopes_files = len(listdir(telescopes_folder)) if path.exists(telescopes_folder) else 0  # noqa: E501
+        logging.warning(f"Removing existing datasets: {events_files + telescopes_files} files")  # noqa: E501
         rmtree(events_folder)
         rmtree(telescopes_folder)
-    
+
     # If output folder doesnt exists
     if not path.exists(output_folder):
         logging.info("creating folder {telescopes_folder}")
         logging.info("creating folder {events_folder}")
     makedirs(path.join(output_folder, "telescopes"), exist_ok=True)
     makedirs(path.join(output_folder, "events"), exist_ok=True)
-    
+
     # Appending index
     file_counter = len(listdir(events_folder))
     events_filepath = path.join(events_folder, f"events{file_counter}.parquet")
-    telescopes_filepath = path.join(telescopes_folder, f"telescopes{file_counter}.parquet")
-    
-    # Iterate over h5 files 
+    telescopes_filepath = path.join(telescopes_folder, f"telescopes{file_counter}.parquet")  # noqa: E501
+
+    # Iterate over h5 files
     total_events = 0
     total_observations = 0
     events_writer, telescope_writer = None, None
@@ -255,8 +252,14 @@ def generate_dataset(file_paths, output_folder, append=False):
             events_data, telescopes_data = extract_data(file)
             total_events += len(events_data)
             total_observations += len(telescopes_data)
-            events_writer = append_to_parquet_table(events_data, filepath=events_filepath, writer=events_writer)
-            telescope_writer = append_to_parquet_table(telescopes_data, filepath=telescopes_filepath, writer=telescope_writer)
+            events_writer = append_to_parquet_table(events_data,
+                                                    filepath=events_filepath,
+                                                    writer=events_writer
+                                                    )
+            telescope_writer = append_to_parquet_table(telescopes_data,
+                                                       filepath=telescopes_filepath,  # noqa: E501
+                                                       writer=telescope_writer
+                                                       )
         except KeyboardInterrupt:
             logging.warning("Extraction stopped.")
             break
@@ -275,11 +278,9 @@ def generate_dataset(file_paths, output_folder, append=False):
 
 
 def split_dataset(dataset, validation_ratio=0.1, balanced_files=True):
-    """Split dataset in train and validation sets using events and a given ratio. 
-    
-    This split enforce the restriction of don't mix hdf5 files between sets in a 
-    imbalance way, but ignore the balance between telescopes type.
-    
+    """Split dataset in train and validation sets using events and a given ratio.
+    This split enforce the restriction of don't mix hdf5 files between sets in
+    a imbalance way, but ignore the balance between telescopes type.
     Args:
         dataset (pd.DataFrame) : Generated dataset.
         validation_ratio (float, optional) : Split proportion. Defaults to 0.1
@@ -289,7 +290,7 @@ def split_dataset(dataset, validation_ratio=0.1, balanced_files=True):
     """
 
     if not (0 < validation_ratio < 1):
-        raise ValueError(f"validation_ratio not in (0,1) range: {validation_ratio}")
+        raise ValueError(f"validation_ratio not in (0,1) range: {validation_ratio}")  # noqa: E501
 
     # split by events
     total_events = dataset.event_unique_id.nunique()
@@ -300,7 +301,7 @@ def split_dataset(dataset, validation_ratio=0.1, balanced_files=True):
     if balanced_files:
         dataset = dataset.sort_values("source")
     else:
-        dataset = dataset.sample(frac=1) # shuffle
+        dataset = dataset.sample(frac=1)  # shuffle
 
     # split by events
     events = dataset.event_unique_id.unique()
@@ -314,16 +315,16 @@ def split_dataset(dataset, validation_ratio=0.1, balanced_files=True):
     return train_dataset, val_dataset
 
 
-def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):
+def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):  # noqa: E501
     """Load events.csv and telescopes.csv files into dataframes.
-    
+
     Args:
         events_path (str) : Path to events parquet file or folder.
         telescopes_path (str) : Path to telescopes parquet file or folder.
         replace_folder (str, optional) : Path to folder containing hdf5 files.
             Replace the folder column from csv file. Usefull if the csv files
-            are shared between different machines. Default None, means no change
-            applied. Defaults to None.
+            are shared between different machines. Default None, means no
+            change applied. Defaults to None.
         merge (bool, optional) : Return merged dataset.
 
     Returns:
@@ -339,7 +340,11 @@ def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):
 
     if merge:
         # Join tables
-        dataset = pd.merge(events_data, telescopes_data, on="event_unique_id", validate="1:m")
+        dataset = pd.merge(events_data,
+                           telescopes_data,
+                           on="event_unique_id",
+                           validate="1:m"
+                           )
         return dataset
     else:
         return events_data, telescopes_data
@@ -347,27 +352,33 @@ def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):
 
 def save_dataset(dataset, output_folder, prefix=None):
     """Save events and telescopes dataframes in the corresponding csv files.
-    
+
     Args:
-        dataset (pd.Dataframe): Dataset of observations for reference telescope images.
+        dataset (pd.Dataframe): Dataset of observations for reference telescope
+        images.
         output_folder (str): Path to folder where dataset files will be saved.
-        prefix (str, optional): Add a prefix to output files names. Defaults to None.
+        prefix (str, optional): Add a prefix to output files names. Defaults to
+        None.
 
     Returns:
         tuple(str): events.csv and telescope.csv path.
     """
     # Unmerge dataset
-    event_drop = [field for field in telescope_fieldnames if field != 'event_unique_id']
-    telescope_drop = [field for field in event_fieldnames if field != 'event_unique_id']
+    event_drop = [
+        field for field in telescope_fieldnames if field != 'event_unique_id'
+        ]
+    telescope_drop = [
+        field for field in event_fieldnames if field != 'event_unique_id'
+        ]
     telescope_data = dataset.drop(columns=telescope_drop)
     event_data = dataset.drop(columns=event_drop)
     event_data = event_data.drop_duplicates()
     # Save events data
-    event_path = "event.parquet" if prefix is None else f"{prefix}_events.parquet"
+    event_path = "event.parquet" if prefix is None else f"{prefix}_events.parquet"  # noqa E501
     event_path = path.join(output_folder, event_path)
     pq.write_table(pa.Table.from_pandas(event_data), event_path)
     # Save telescopes data
-    telescope_path = "telescopes.parquet" if prefix is None else f"{prefix}_telescopes.parquet"
+    telescope_path = "telescopes.parquet" if prefix is None else f"{prefix}_telescopes.parquet"  # noqa E501
     telescope_path = path.join(output_folder, telescope_path)
     pq.write_table(pa.Table.from_pandas(telescope_data), telescope_path)
     return event_path, telescope_path
@@ -378,7 +389,7 @@ def describe_dataset(dataset, save_to=None):
 
     Args:
         dataset (pd.DataFrame): loaded dataset from csv files
-        save_to (str, optional): Path to description txt file. Defaults to None.
+        save_to (str, optional): Path to description txt file. Defaults to None
     """
     files = dataset.source.nunique()
     events = dataset.event_unique_id.nunique()
@@ -399,22 +410,33 @@ def describe_dataset(dataset, save_to=None):
             save_file.write(by_telescope.to_string())
 
 
-def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True):
+def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
+                      hdf5_file=True, remove_nan=True):
     """Perform simple aggegation to targe columns.
 
     Args:
         dataset (pd.DataFrame): [description]
-        az (bool, optional): Translate domain from [0, 2\pi] to [-\pi, \pi]. Defaults to True.
-        log10_mc_energy (bool, optional): Add new log10_mc_energy column, with the logarithm values of mc_energy. Defaults to True.
+        az (bool, optional): Translate domain from [0, 2pi] to [-pi, pi].
+            Defaults to True.
+        log10_mc_energy (bool, optional): Add new log10_mc_energy column,
+            with the logarithm values of mc_energy. Defaults to True.
         hdf5_file (bool, optional): Replace source folder. Defaults to True.
 
     Returns:
         pd.DataFrame: Dataset with aggregate information.
     """
     if az:
-        dataset["true_az"] = dataset["true_az"].apply(lambda rad: np.arctan2(np.sin(rad), np.cos(rad)))
+        dataset["true_az"] = dataset["true_az"].apply(
+            lambda rad: np.arctan2(np.sin(rad), np.cos(rad))
+            )
     if log10_mc_energy:
-        dataset["true_log10_energy"] = dataset["true_energy"].apply(lambda energy: np.log10(energy))
+        dataset["true_log10_energy"] = dataset["true_energy"].apply(
+            lambda energy: np.log10(energy)
+            )
     if hdf5_file:
-        dataset["hdf5_filepath"] = dataset[["folder", "source"]].apply(lambda x: path.join(x[0], x[1]), axis=1)
+        dataset["hdf5_filepath"] = dataset[["folder", "source"]].apply(
+            lambda x: path.join(x[0], x[1]), axis=1
+            )
+    if remove_nan:
+        dataset.dropna(inplace=True)
     return dataset
