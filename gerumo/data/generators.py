@@ -97,7 +97,7 @@ class MonoGenerator(BaseGenerator):
         super().__init__(
             dataset, batch_size, input_mapper, output_mapper, shuffle
         )
-        self.strict_shuffle = True
+        self.strict_shuffle = strict_shuffle
         self.telescope = telescope
         self.on_epoch_end()
 
