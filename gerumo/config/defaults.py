@@ -51,33 +51,48 @@ _C.DATASETS.TEST = CN()
 _C.DATASETS.TEST.EVENTS = None
 _C.DATASETS.TEST.TELESCOPES = None
 _C.DATASETS.TEST.FOLDER = None
+# Agregate dataset
+_C.DATASET.AGGREGATION = CN()
+_C.DATASET.AGGREGATION.CENTER_AZ = True
+_C.DATASET.AGGREGATION.LOG10_ENERGY = True
+_C.DATASET.AGGREGATION.HDF5_FILEPATH = True
 # -----------------------------------------------------------------------------
-# DataLoader
+# Generator
 # -----------------------------------------------------------------------------
-_C.DATALOADER = CN()
+_C.GENERATOR = CN()
 # Number of data loading threads
-_C.DATALOADER.NUM_WORKERS = 1
+_C.GENERATOR.NAME = "MonoGenerator"
+_C.GENERATOR.NUM_WORKERS = 1
+# Shuffle Dataset
+_C.GENERATOR.ENABLE_SHUFFLE = True
+_C.GENERATOR.USE_STRICT_SHUFFLE = False # If shufle is enable, it keep same h5 file in a batch 
 # -----------------------------------------------------------------------------
 # Input
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
 _C.INPUT.MAPPER = CN()
 _C.INPUT.MAPPER.NAME = "SimpleSquareImage"
-_C.INPUT.MAPPER.IMAGES_CHANNELS = ["charge", "time_peaks", "mask"]
+_C.INPUT.IMAGES_CHANNELS = ["charge", "time_peaks", "mask"]
 _C.INPUT.TELESCOPE_FEATURES = []
+# -----------------------------------------------------------------------------
+# Output
+# -----------------------------------------------------------------------------
+_C.OUTPUT = CN()
+_C.OUTPUT.MAPPER = CN()
+_C.OUTPUT.MAPPER.NAME = "SimpleRegression"
 # -----------------------------------------------------------------------------
 # Classification task 
 # -----------------------------------------------------------------------------
-_C.CLASSIFICATION = CN()
-_C.CLASSIFICATION.TARGET = "particle_type"
-_C.CLASSIFICATION.NUM_CLASSES = 2
-_C.CLASSIFICATION.CLASSES = ["gamma", "protron"]
+_C.OUTPUT.CLASSIFICATION = CN()
+_C.OUTPUT.CLASSIFICATION.TARGET = "particle_type"
+_C.OUTPUT.CLASSIFICATION.NUM_CLASSES = 2
+_C.OUTPUT.CLASSIFICATION.CLASSES = ["gamma", "protron"]
 # -----------------------------------------------------------------------------
 # Regression task
 # -----------------------------------------------------------------------------
-_C.REGRESSION = CN()
-_C.REGRESSION.TARGET = ["true_az", "true_alt"]
-_C.REGRESSION.TARGET_DOMAIN = [
+_C.OUTPUT.REGRESSION = CN()
+_C.OUTPUT.REGRESSION.TARGET = ["true_az", "true_alt"]
+_C.OUTPUT.REGRESSION.TARGET_DOMAIN = [
     (1.15, 1.3),
     (-0.25, 0.25)
 ]
