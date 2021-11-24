@@ -1,4 +1,5 @@
 from .config import CfgNode as CN
+from ..utils.structures import Task
 
 # -----------------------------------------------------------------------------
 # Config definition
@@ -9,7 +10,7 @@ _C = CN()
 # -----------------------------------------------------------------------------
 _C.MODEL = CN()
 _C.MODEL.DEVICE = "cuda"
-_C.MODEL.TASK = "regression"
+_C.MODEL.TASK = Task.REGRESSION.name
 _C.MODEL.TELESCOPES = ["LST_LSTCam"]   # Telescope {type}_{camera_type}
 _C.MODEL.WEIGHTS = None             # Path  to a checkpoint file to be loaded to the model.
 # Models Loss
@@ -81,7 +82,7 @@ _C.OUTPUT = CN()
 _C.OUTPUT.MAPPER = CN()
 _C.OUTPUT.MAPPER.NAME = "SimpleRegression"
 # -----------------------------------------------------------------------------
-# Classification task 
+# Classification task
 # -----------------------------------------------------------------------------
 _C.OUTPUT.CLASSIFICATION = CN()
 _C.OUTPUT.CLASSIFICATION.TARGET = "particle_type"
@@ -91,8 +92,8 @@ _C.OUTPUT.CLASSIFICATION.CLASSES = ["gamma", "protron"]
 # Regression task
 # -----------------------------------------------------------------------------
 _C.OUTPUT.REGRESSION = CN()
-_C.OUTPUT.REGRESSION.TARGET = ["true_az", "true_alt"]
-_C.OUTPUT.REGRESSION.TARGET_DOMAIN = [
+_C.OUTPUT.REGRESSION.TARGETS = ["true_az", "true_alt"]
+_C.OUTPUT.REGRESSION.TARGETS_DOMAINS = [
     (1.15, 1.3),
     (-0.25, 0.25)
 ]
