@@ -19,7 +19,7 @@ from ..utils.structures import Event, Observations, Telescope
 from ..data.mappers import (
     InputMapper, OutputMapper, build_input_mapper, build_output_mapper
 )
-# from sklearn import utils
+from sklearn import utils
 
 GENERATOR_REGISTRY = Registry("GENERATOR")
 GENERATOR_REGISTRY.__doc__ = """
@@ -113,9 +113,21 @@ class MonoGenerator(BaseGenerator):
             "strict_shuffle": cfg.GENERATOR.USE_STRICT_SHUFFLE,
         }
 
-    def on_epoch_end(self):
-        pass
+    def on_epoch_end(self) -> np.ndarray:
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(self.size)
+        if self.shuffle:
+            if self.strict_shuffle:
+                raise NotImplementedError
+            else:
+                np.random.shuffle(self.indexes)
+        return self.indexes
 
-    def _data_generation(self, list_indexes: np.ndarray
+    def _data_generation(self,
+                         list_indexes: np.ndarray
                          ) -> Tuple[List[Observations], List[Event]]:
-        pass
+        'Generates data containing batch_size samples'
+        batch_dataset = self.dataset.iloc[list_indexes]
+        observations = self.input_mapper(batch_dataset)
+        events = self.output_mapper(batch_dataset)
+        return (observations, events)
