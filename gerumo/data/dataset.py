@@ -24,25 +24,25 @@ Tables routes
 ============
 """
 # Paremeters and images
-event_info_table = "simulation/event/subarray/shower"     # Ground Truth
-event_triggers_table = "/dl1/event/subarray/trigger"      # Which telescopes were activates
-array_layout = "configuration/instrument/subarray/layout" # Array info 
+event_info_table = "simulation/event/subarray/shower"  # Ground Truth
+event_triggers_table = "/dl1/event/subarray/trigger"  # Activated telescopes
+array_layout = "configuration/instrument/subarray/layout"  # Array info
 # Images template
 telescope_parameters = "/dl1/event/telescope/parameters/tel_{0}"  # Hillas parameters
-telescope_images = "/dl1/event/telescope/images/tel_{0}"          # Time peaks and charge images
+telescope_images = "/dl1/event/telescope/images/tel_{0}"  # Time peaks and charge images
 # Cameras
-LST_geom='/configuration/instrument/telescope/camera/geometry_LSTCam'
-CHEC_geom='/configuration/instrument/telescope/camera/geometry_CHEC'
-Flash_geom='/configuration/instrument/telescope/camera/geometry_FlashCam'
-Nectar_geom='/configuration/instrument/telescope/camera/geometry_NectarCam'
+LST_geom = '/configuration/instrument/telescope/camera/geometry_LSTCam'
+CHEC_geom = '/configuration/instrument/telescope/camera/geometry_CHEC'
+Flash_geom = '/configuration/instrument/telescope/camera/geometry_FlashCam'
+Nectar_geom = '/configuration/instrument/telescope/camera/geometry_NectarCam'
 geometry = {
-    'LST': LST_geom, 
-    'MSTF': Flash_geom, 
+    'LST': LST_geom,
+    'MSTF': Flash_geom,
     'SSTC': CHEC_geom,
     'MSTN': Nectar_geom
 }
-cameras=list(geometry.values())
-telescopes_names=list(geometry.keys())
+cameras = list(geometry.values())
+telescopes_names = list(geometry.keys())
 
 """
 Parquet dataset columns
@@ -50,35 +50,35 @@ Parquet dataset columns
 """
 # Events data
 event_fieldnames = [
-    'event_unique_id',  # gerumo's event identifier
-    'event_id',         # hdf5 event identifier
-    'obs_id',           # TBA
-    'source',           # hfd5 filename
-    'folder',             # Container hdf5 folder
-    'true_core_x',      # Ground x coordinate
-    'true_core_y',      # Ground y coordinate
-    'true_h_first_int', # Height firts impact
-    'true_alt',         # Altitute
-    'true_az',          # Azimut
-    'true_energy',      # Energy
-    'particle_type'     # Particle type
+    'event_unique_id',   # gerumo's event identifier
+    'event_id',          # hdf5 event identifier
+    'obs_id',            # TBA
+    'source',            # hfd5 filename
+    'folder',            # Container hdf5 folder
+    'true_core_x',       # Ground x coordinate
+    'true_core_y',       # Ground y coordinate
+    'true_h_first_int',  # Height firts impact
+    'true_alt',          # Altitute
+    'true_az',           # Azimut
+    'true_energy',       # Energy
+    'particle_type'      # Particle type
 ]
 
 # Telescope data
 # Observation Hillas parameters
 hillas_parameters = [
     'hillas_intensity',
-	'hillas_x',
-	'hillas_y',
-	'hillas_r',
-	'hillas_phi',
-	'hillas_length',
-	'hillas_length_uncertainty',
-	'hillas_width',
-	'hillas_width_uncertainty',
-	'hillas_psi',
-	'hillas_skewness',
-	'hillas_kurtosis'
+    'hillas_x',
+    'hillas_y',
+    'hillas_r',
+    'hillas_phi',
+    'hillas_length',
+    'hillas_length_uncertainty',
+    'hillas_width',
+    'hillas_width_uncertainty',
+    'hillas_psi',
+    'hillas_skewness',
+    'hillas_kurtosis'
 ]
 telescope_fieldnames = [
     # Array info
@@ -93,6 +93,7 @@ telescope_fieldnames = [
     'observation_idx',      # Observation row index in image tel_xxx table
     'event_unique_id',      # gerumo's event identifier
 ] + hillas_parameters
+
 
 def extract_data(hdf5_filepath):
     """Extract data from one hdf5 file."""
@@ -215,16 +216,16 @@ def generate_dataset(file_paths, output_folder, append=False):
     """
     # hdf5 files
     files = [path.abspath(file) for file in file_paths]
-    
+
     # Check if list is not empty
     logging.debug(f"{len(files)} files found.")
     if len(files) == 0:
         raise FileNotFoundError
-    
+
     # Dataset folders
     events_folder = path.join(output_folder, "events")
     telescopes_folder = path.join(output_folder, "telescopes")
-    
+
     # If overwrite, remove existing files
     if not append and path.exists(output_folder):
         events_files = len(listdir(events_folder)) if path.exists(events_folder) else 0
@@ -232,20 +233,20 @@ def generate_dataset(file_paths, output_folder, append=False):
         logging.warning(f"Removing existing datasets: {events_files + telescopes_files} files")
         rmtree(events_folder)
         rmtree(telescopes_folder)
-    
+
     # If output folder doesnt exists
     if not path.exists(output_folder):
         logging.info("creating folder {telescopes_folder}")
         logging.info("creating folder {events_folder}")
     makedirs(path.join(output_folder, "telescopes"), exist_ok=True)
     makedirs(path.join(output_folder, "events"), exist_ok=True)
-    
+
     # Appending index
     file_counter = len(listdir(events_folder))
     events_filepath = path.join(events_folder, f"events{file_counter}.parquet")
     telescopes_filepath = path.join(telescopes_folder, f"telescopes{file_counter}.parquet")
-    
-    # Iterate over h5 files 
+
+    # Iterate over h5 files
     total_events = 0
     total_observations = 0
     events_writer, telescope_writer = None, None
@@ -276,10 +277,8 @@ def generate_dataset(file_paths, output_folder, append=False):
 
 def split_dataset(dataset, validation_ratio=0.1, balanced_files=True):
     """Split dataset in train and validation sets using events and a given ratio. 
-    
-    This split enforce the restriction of don't mix hdf5 files between sets in a 
+    This split enforce the restriction of don't mix hdf5 files between sets in a
     imbalance way, but ignore the balance between telescopes type.
-    
     Args:
         dataset (pd.DataFrame) : Generated dataset.
         validation_ratio (float, optional) : Split proportion. Defaults to 0.1
@@ -316,7 +315,7 @@ def split_dataset(dataset, validation_ratio=0.1, balanced_files=True):
 
 def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):
     """Load events.csv and telescopes.csv files into dataframes.
-    
+
     Args:
         events_path (str) : Path to events parquet file or folder.
         telescopes_path (str) : Path to telescopes parquet file or folder.
@@ -347,7 +346,7 @@ def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):
 
 def save_dataset(dataset, output_folder, prefix=None):
     """Save events and telescopes dataframes in the corresponding csv files.
-    
+
     Args:
         dataset (pd.Dataframe): Dataset of observations for reference telescope images.
         output_folder (str): Path to folder where dataset files will be saved.

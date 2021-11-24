@@ -19,7 +19,7 @@ from ..utils.structures import Event, Observations, Telescope
 from ..data.mappers import (
     InputMapper, OutputMapper, build_input_mapper, build_output_mapper
 )
-from sklearn import utils
+# from sklearn import utils
 
 GENERATOR_REGISTRY = Registry("GENERATOR")
 GENERATOR_REGISTRY.__doc__ = """
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def build_generator(cfg, dataset) -> 'BaseGenerator':
     """
-    Build ROIHeads defined by `cfg.MODEL.ROI_HEADS.NAME`.
+    Build Generators defined by `cfg.GENERATOR.NAME`.
     """
     name = cfg.GENERATOR.NAME
     return GENERATOR_REGISTRY.get(name)(cfg, dataset)
