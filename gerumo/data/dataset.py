@@ -421,7 +421,8 @@ def describe_dataset(dataset, save_to=None):
             save_file.write(by_telescope.to_string())
 
 
-def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True):
+def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
+                      hdf5_file=True, remove_nan=True):
     """Perform simple aggegation to targe columns.
 
     Args:
@@ -447,4 +448,6 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True):
         dataset["hdf5_filepath"] = dataset[["folder", "source"]].apply(
             lambda x: path.join(x[0], x[1]), axis=1
             )
+    if remove_nan:
+        dataset.dropna(inplace=True)
     return dataset
