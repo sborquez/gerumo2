@@ -31,19 +31,7 @@ array_layout = "configuration/instrument/subarray/layout"  # Array info
 telescope_parameters = "/dl1/event/telescope/parameters/tel_{0}"
 # Time peaks and charge images
 telescope_images = "/dl1/event/telescope/images/tel_{0}"
-# Cameras
-LST_geom = '/configuration/instrument/telescope/camera/geometry_LSTCam'
-CHEC_geom = '/configuration/instrument/telescope/camera/geometry_CHEC'
-Flash_geom = '/configuration/instrument/telescope/camera/geometry_FlashCam'
-Nectar_geom = '/configuration/instrument/telescope/camera/geometry_NectarCam'
-geometry = {
-    'LST': LST_geom,
-    'MSTF': Flash_geom,
-    'SSTC': CHEC_geom,
-    'MSTN': Nectar_geom
-}
-cameras = list(geometry.values())
-telescopes_names = list(geometry.keys())
+
 
 """
 Parquet dataset columns
@@ -180,6 +168,7 @@ def extract_data(hdf5_filepath):
     finally:
         logging.debug(f"Total events: {len(events_data)}")
         logging.debug(f"Total observations: {len(telescopes_data)}")
+        hdf5_file.close()
 
     return pd.DataFrame(events_data), pd.DataFrame(telescopes_data)
 

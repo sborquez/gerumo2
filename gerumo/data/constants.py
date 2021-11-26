@@ -8,9 +8,10 @@ from ..utils.structures import Telescope
 
 # Telescopes types
 TELESCOPES = {
-    "LST_LSTCam":  Telescope(None, None, None),
-    "MST_FlashCam": Telescope(None, None, None),
-    "SSTC": Telescope(None, None, None)
+    "LST":  Telescope("LST", "LST", "LSTCam"),
+    # "MST": Telescope("MST", "MST", "NectarCam"),
+    "MST": Telescope("MST", "MST", "FlashCam"),
+    "SST": Telescope("ASTRI", "SST", "CHEC")
 }
 
 # Telescope array information
