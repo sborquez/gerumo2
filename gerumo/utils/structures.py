@@ -1,7 +1,8 @@
 from pathlib import Path
+from itertools import repeat
 from enum import IntEnum, unique
-from typing import Any, List, Optional
-from collections import OrderedDict
+from typing import Any, List, Optional, Tuple, Union, Dict
+from collections import OrderedDict, defaultdict
 import numpy as np
 import pandas as pd
 import tables
@@ -136,28 +137,59 @@ class Observations:
     by the telescope type.
     """
     def __init__(self, event_unique_id: str, mode: ReconstructionMode,
-                 telescopes: List['Telescope'], features_names: List[str],
+                 telescopes: List['Telescope'],
+                 features_names: List[str],
                  images: Optional[List[np.ndarray]] = None,
                  features: Optional[List[np.ndarray]] = None) -> None:
-        assert len(features_names)
+        assert len(telescopes) > 0
+        assert not ((mode is ReconstructionMode.SINGLE) and (len(telescopes) > 1))  # noqa
+        assert (images is None) and (features is None)
         self._event_unique_id = event_unique_id
         self._mode = mode
+        self._features_names = features_names
+        self._obs_by_telescopes = defaultdict(list)
+        for idx, telescope in enumerate(telescopes):
+            self._obs_by_telescopes[telescope.type].append(idx)
+        self._availables_telescopes = list(self._obs_by_telescopes.keys())
+        self.images = images or list(repeat(None, len(telescopes)))
+        self.features = features or list(repeat(None, len(telescopes)))
+
+    def to_tensor(self, telescopes: Optional[List['Telescope']] = None
+                  ) -> Union[Tuple[np.ndarray, np.ndarray], Dict[str, List[Tuple[np.ndarray, np.ndarray]]]]:  # noqa
+        # Return only one image an features
+        if self._mode is ReconstructionMode.SINGLE:
+            return tuple(self.images[0], self.features[0])
+        # Return each image and feature grouped by telescope type
+        elif self._mode is ReconstructionMode.STEREO:
+            # Select which telecopes return, default is all avaiables.
+            if (telescopes is None):
+                telescopes_types = self._availables_telescopes
+            else:
+                telescopes_types = [t.type for t in telescopes]
+            # Group by telescope type
+            obs_by_telescope = {}
+            for telescope_type in telescopes_types:
+                obs_by_telescope[telescope_type] = [
+                    tuple(self.images[idx], self.features[idx])
+                    for idx in self._obs_by_telescopes[telescope_type]
+                ]
+            return obs_by_telescope
 
     @property
     def event_unique_id(self) -> str:
-        """
-        Returns:
-            str
-        """
         return self._event_unique_id
 
     @property
     def mode(self) -> ReconstructionMode:
-        """
-        Returns:
-            ReconstructionMode
-        """
         return self._mode
+
+    @property
+    def features_names(self) -> List[str]:
+        return self._features_names
+
+    @property
+    def n_observations(self) -> int:
+        return len(self._telescopes)
 
 
 class Telescope:
