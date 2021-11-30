@@ -127,17 +127,7 @@ class MonoGenerator(BaseGenerator):
                          list_indexes: np.ndarray
                          ) -> Tuple[List[Observations], List[Event]]:
         'Generates data containing batch_size samples'
-        batch_observations = []
-        batch_events = []
-        for obs_idx in list_indexes:
-            obs_df = self.dataset.iloc[[obs_idx]]
-            observations = self.input_mapper(obs_df)
-            event = self.output_mapper(obs_df)
-            batch_events.append(event)
-            batch_observations.append(observations)
-        return (batch_observations, batch_events)
-
-
-# @GENERATOR_REGISTRY.register()
-# class MultiStereoGenerator(BaseGenerator):
-#     pass
+        batch_dataset = self.dataset.iloc[list_indexes]
+        observations = self.input_mapper(batch_dataset)
+        events = self.output_mapper(batch_dataset)
+        return (observations, events)
