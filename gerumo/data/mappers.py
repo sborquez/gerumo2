@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from fvcore.common.registry import Registry
 from ..utils.structures import Task, Event, Observations
 from ..config.config import configurable
@@ -106,7 +107,7 @@ class SimpleRegression(OutputRegressionMapper):
 class SimpleCategorical(OutputClassificationMapper):
     @configurable
     def __init__(self, target, num_classes, classes) -> None:
-        super().__init__(target, num_classes, classes)
+        super().__init__(target=target, num_classes=num_classes, classes=classes)
 
     def __call__(self, event_df: pd.DataFrame) -> Event:
         pass
@@ -116,7 +117,7 @@ class SimpleCategorical(OutputClassificationMapper):
 class OnevsAllClassification(OutputClassificationMapper):
     @configurable
     def __init__(self, target, num_classes, classes) -> None:
-        super().__init__(target, num_classes, classes)
+        super().__init__(target=target, num_classes=num_classes, classes=classes)
 
     def __call__(self, event_df: pd.DataFrame) -> Event:
         pass
