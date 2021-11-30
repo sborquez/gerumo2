@@ -1,11 +1,3 @@
-from enum import Enum
-
-
-class Task(Enum):
-    CLASSIFICATION = 0
-    REGRESSION = 1
-
-
 class Event:
     """An output sample, it contains the event information including the ground
     truth for regression and classification.
