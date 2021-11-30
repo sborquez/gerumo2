@@ -121,7 +121,7 @@ class Event:
     def from_dataframe(cls, event_df: pd.DataFrame,
                        fields: List[str]) -> 'Event':
         event_row = event_df.iloc[0]
-        event = cls(
+        event = Event(
             event_unique_id=event_row.event_unique_id,
             energy=event_row.true_energy,
             **{field: event_row[field] for field in fields}
@@ -139,29 +139,20 @@ class Observations:
     def __init__(self, event_unique_id: str, mode: ReconstructionMode,
                  telescopes: List['Telescope'],
                  features_names: List[str],
-                 channels_names: List[str],
                  images: Optional[List[np.ndarray]] = None,
                  features: Optional[List[np.ndarray]] = None) -> None:
         assert len(telescopes) > 0
         assert not ((mode is ReconstructionMode.SINGLE) and (len(telescopes) > 1))  # noqa
-        assert (images is not None) or (features is not None)
+        assert (images is None) and (features is None)
         self._event_unique_id = event_unique_id
         self._mode = mode
         self._features_names = features_names
-        self._channels_names = channels_names
         self._obs_by_telescopes = defaultdict(list)
         for idx, telescope in enumerate(telescopes):
             self._obs_by_telescopes[telescope.type].append(idx)
         self._availables_telescopes = list(self._obs_by_telescopes.keys())
         self.images = images or list(repeat(None, len(telescopes)))
         self.features = features or list(repeat(None, len(telescopes)))
-
-    def __repr__(self) -> str:
-        desc = f"Observations(id={self._event_unique_id}, mode={self._mode.name}"
-        if self._mode is ReconstructionMode.SINGLE:
-            return desc + f", telescope={self._availables_telescopes[0]})"
-        else:
-            return desc + f", telescopes={self._availables_telescopes})"
 
     def to_tensor(self, telescopes: Optional[List['Telescope']] = None
                   ) -> Union[Tuple[np.ndarray, np.ndarray], Dict[str, List[Tuple[np.ndarray, np.ndarray]]]]:  # noqa
@@ -197,14 +188,8 @@ class Observations:
         return self._features_names
 
     @property
-    def n_observations(self) -> Union[int, Dict[str, int]]:
-        if self.mode is ReconstructionMode.SINGLE:
-            return 1
-        else:
-            return {
-                telescope: len(obs)
-                for telescope, obs in self._obs_by_telescopes.items()
-            }
+    def n_observations(self) -> int:
+        return len(self._telescopes)
 
 
 class Telescope:

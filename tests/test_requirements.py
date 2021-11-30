@@ -6,19 +6,16 @@ def test_tensorflow():
     import tensorflow_addons as tfa
     assert tfa.__version__ == '0.15.0'
     import tensorboard
-
-
+    
 def test_scipy():
     import pandas
     import sklearn
-
 
 def test_utils():
     import fvcore
     import omegaconf
     import tables
-
-
+    
 def test_cta():
     import ctaplot
     assert ctaplot.__version__ == "0.5.6"
