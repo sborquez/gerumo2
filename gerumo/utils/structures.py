@@ -1,23 +1,13 @@
-from pathlib import Path
-from enum import IntEnum, unique
+from enum import Enum
 from typing import Any, List, Optional
 from collections import OrderedDict
 import numpy as np
-import pandas as pd
 import tables
 
 
-@unique
-class Task(IntEnum):
+class Task(Enum):
     CLASSIFICATION = 0
     REGRESSION = 1
-    # MULTITASK = 2 Not supported yet
-
-
-@unique
-class ReconstructionMode(IntEnum):
-    SINGLE = 0  # or Mono
-    STEREO = 1
 
 
 class Event:
@@ -28,7 +18,7 @@ class Event:
     The mapper functions should transform the "raw" information into an
     Event during training.
     """
-    def __init__(self, event_unique_id: str, energy: float,
+    def __init__(self, event_unique_id: int, energy: float,
                  **kwargs: Any) -> None:
         """
         Args:
@@ -40,6 +30,22 @@ class Event:
         self._fields: OrderedDict[str, Any] = OrderedDict()
         for k, v in kwargs.items():
             self.set(k, v)
+
+    @property
+    def event_unique_id(self) -> int:
+        """
+        Returns:
+            int
+        """
+        return self._event_unique_id
+
+    @property
+    def energy(self) -> float:
+        """
+        Returns:
+            float
+        """
+        return self._energy
 
     def __setattr__(self, name: str, val: Any) -> None:
         if name.startswith("_"):
@@ -95,75 +101,22 @@ class Event:
         fields = fields or list(self._fields.keys())
         return np.array([self._fields[field] for field in fields])
 
-    @property
-    def event_unique_id(self) -> str:
-        """
-        Returns:
-            str
-        """
-        return self._event_unique_id
-
-    @property
-    def energy(self) -> float:
-        """
-        Returns:
-            float
-        """
-        return self._energy
-
     @classmethod
     def list_to_tensor(cls, events: List['Event'],
                        fields: Optional[List[str]] = None) -> np.ndarray:
         return np.stack([event.to_tensor(fields) for event in events])
-
-    @classmethod
-    def from_dataframe(cls, event_df: pd.DataFrame,
-                       fields: List[str]) -> 'Event':
-        event_row = event_df.iloc[0]
-        event = Event(
-            event_unique_id=event_row.event_unique_id,
-            energy=event_row.true_energy,
-            **{field: event_row[field] for field in fields}
-        )
-        return event
 
 
 class Observations:
     """An input sample, it contains a list the features (or image)
     corresponding to one of all the observations of an event.
     For Mono reconstruction it contains a list of length 1.
-    For Stereo and Multi-Stereo reconstruction, inputs are grouped
-    by the telescope type.
+    For Stereo reconstruction, inputs are grouped by the telescope type.
     """
-    def __init__(self, event_unique_id: str, mode: ReconstructionMode,
-                 telescopes: List['Telescope'], features_names: List[str],
-                 images: Optional[List[np.ndarray]] = None,
-                 features: Optional[List[np.ndarray]] = None) -> None:
-        assert len(features_names)
-        self._event_unique_id = event_unique_id
-        self._mode = mode
-
-    @property
-    def event_unique_id(self) -> str:
-        """
-        Returns:
-            str
-        """
-        return self._event_unique_id
-
-    @property
-    def mode(self) -> ReconstructionMode:
-        """
-        Returns:
-            ReconstructionMode
-        """
-        return self._mode
+    pass
 
 
 class Telescope:
-
-    cache_folder = Path(__file__).parent / "pixpos"
-
     geometries_paths = {
       'LSTCam': '/configuration/instrument/telescope/camera/geometry_LSTCam',
       'FlashCam': '/configuration/instrument/telescope/camera/geometry_FlashCam',  # noqa
@@ -177,21 +130,18 @@ class Telescope:
         self.camera_type = camera_type
         self._pixels_positions = None
         self._aligned_pixels_positions = None
-        self._cache_file = Telescope.cache_folder / ("_".join(self.description)) # noqa
-        if self._cache_file.with_suffix(".npy").exists():
-            self.set_geometry_from_cache()
 
     def __repr__(self) -> str:
-        return str(self)[:-2] + f"(id={id(self)})"
+        return str(self)
 
     def __str__(self) -> str:
-        return "Telescope." + "_".join(self.description) + "()"
+        return "_".join(self.description)
 
     @property
     def description(self):
         return (self.name, self.type, self.camera_type)
 
-    def set_geometry_from_hdf5(self, hdf5_filepath):
+    def set_geometry(self, hdf5_filepath):
         geometry_path = Telescope.geometries_paths[self.camera_type]
         hdf5_file = tables.open_file(hdf5_filepath, "r")
         geometry = hdf5_file.root[geometry_path]
@@ -199,32 +149,16 @@ class Telescope:
         hdf5_file.close()
         self._aligned_pixels_positions = self.__compute_alignment(self._pixels_positions)  # noqa
 
-    def save_geometry_to_cache(self):
-        pixels_positions = self.get_pixels_positions()
-        np.save(self._cache_file, pixels_positions)
-
-    def set_geometry_from_cache(self):
-        self._pixels_positions = np.load(self._cache_file.with_suffix(".npy"))
-        self._aligned_pixels_positions = self.__compute_alignment(self._pixels_positions)  # noqa
-
     def get_pixels_positions(self, hdf5_filepath=None):
         if self._pixels_positions is None:
-            if hdf5_filepath is not None:
-                self.set_geometry_from_hdf5(hdf5_filepath)
-            elif self._cache_file.with_suffix(".npy").exists():
-                self.set_geometry_from_cache()
-            else:
-                raise ValueError("Pixels positions not loaded")
+            assert hdf5_filepath is not None
+            self.set_geometry(hdf5_filepath)
         return self._pixels_positions
 
     def get_aligned_pixels_positions(self, hdf5_filepath=None):
         if self._aligned_pixels_positions is None:
-            if hdf5_filepath is not None:
-                self.set_geometry_from_hdf5(hdf5_filepath)
-            elif self._cache_file.exists():
-                self.set_geometry_from_cache()
-            else:
-                raise ValueError("Pixels positions not loaded")
+            assert hdf5_filepath is not None
+            self.set_geometry(hdf5_filepath)
         return self._aligned_pixels_positions
 
     def __compute_alignment(self, pixels_positions: np.ndarray) -> np.ndarray:
