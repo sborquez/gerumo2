@@ -113,5 +113,5 @@ def to_simple_and_shift(pixpos: np.ndarray) -> np.ndarray:
     new_y = np.round(new_y).astype(int)
     # prepare output
     simple = np.vstack((new_x_r, new_y))
-    simple_shift = np.vstack((new_x_l, new_x_r, new_y))
+    simple_shift = np.vstack((new_x_l, new_y))
     return simple, simple_shift

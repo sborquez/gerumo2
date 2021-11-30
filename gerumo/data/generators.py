@@ -94,6 +94,10 @@ class MonoGenerator(BaseGenerator):
                  output_mapper: OutputMapper,
                  shuffle: bool = True,
                  strict_shuffle: bool = False) -> None:
+        mask = np.logical_and.reduce(
+            dataset[["name", "type", "camera_type"]] == telescope.description,
+            axis=1)
+        dataset = dataset[mask]
         super().__init__(
             dataset, batch_size, input_mapper, output_mapper, shuffle
         )
