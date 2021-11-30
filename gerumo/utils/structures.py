@@ -2,7 +2,6 @@ from enum import Enum
 from typing import Any, List, Optional
 from collections import OrderedDict
 import numpy as np
-import tables
 
 
 class Task(Enum):
@@ -117,50 +116,20 @@ class Observations:
 
 
 class Telescope:
-    geometries_paths = {
-      'LSTCam': '/configuration/instrument/telescope/camera/geometry_LSTCam',
-      'FlashCam': '/configuration/instrument/telescope/camera/geometry_FlashCam',  # noqa
-      'CHEC': '/configuration/instrument/telescope/camera/geometry_CHEC',
-      'NectarCam': '/configuration/instrument/telescope/camera/geometry_NectarCam' # noqa
-    }
-
     def __init__(self, name, type, camera_type):
         self.name = name
         self.type = type
         self.camera_type = camera_type
-        self._pixels_positions = None
-        self._aligned_pixels_positions = None
-
-    def __repr__(self) -> str:
-        return str(self)
 
     def __str__(self) -> str:
-        return "_".join(self.description)
+        return "_".join(self.get_description())
 
     @property
-    def description(self):
-        return (self.name, self.type, self.camera_type)
+    def get_description(self):
+        return tuple(self.name, self.type, self.camera_type)
 
-    def set_geometry(self, hdf5_filepath):
-        geometry_path = Telescope.geometries_paths[self.camera_type]
-        hdf5_file = tables.open_file(hdf5_filepath, "r")
-        geometry = hdf5_file.root[geometry_path]
-        self._pixels_positions = np.array([(row["pix_x"], row["pix_y"]) for row in geometry]).T  # noqa
-        hdf5_file.close()
-        self._aligned_pixels_positions = self.__compute_alignment(self._pixels_positions)  # noqa
+    def get_geometry(self):
+        pass
 
-    def get_pixels_positions(self, hdf5_filepath=None):
-        if self._pixels_positions is None:
-            assert hdf5_filepath is not None
-            self.set_geometry(hdf5_filepath)
-        return self._pixels_positions
-
-    def get_aligned_pixels_positions(self, hdf5_filepath=None):
-        if self._aligned_pixels_positions is None:
-            assert hdf5_filepath is not None
-            self.set_geometry(hdf5_filepath)
-        return self._aligned_pixels_positions
-
-    def __compute_alignment(self, pixels_positions: np.ndarray) -> np.ndarray:
-        from .camera_align import compute_alignment
-        return compute_alignment(self.camera_type, pixels_positions)
+    def get_aligned_geometry(self):
+        pass

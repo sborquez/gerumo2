@@ -12,6 +12,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 
 
+
 """
 Input Samples
 ================
@@ -27,21 +28,18 @@ Dataset Visualizations
 ================
 """
 
-
 def plot_array(hdf5_file, layout="configuration/instrument/subarray/layout"):
     plt.figure(figsize=(8, 8))
     plt.title("Array info")
-    markers = ['x', '+', 'v',  '^', ',', '<', '>', 's', ',', 'd']
+    markers = ['x', '+', 'v',  '^', ',','<', '>', 's',',', 'd']
     telescopes_groups = {}
     for row in hdf5_file.root[layout]:
         telescope_type = row["type"].decode()+"-"+row["camera_type"].decode()
         if telescope_type not in telescopes_groups:
-            telescopes_groups[telescope_type] = {
-                "x": [], "y": [], "marker": markers.pop()
-                }
+            telescopes_groups[telescope_type] = {"x": [], "y":[], "marker": markers.pop()}
         telescopes_groups[telescope_type]["x"].append(row["pos_x"])
         telescopes_groups[telescope_type]["y"].append(row["pos_y"])
-    for k, v in telescopes_groups.items():
+    for k,v in telescopes_groups.items():
         plt.scatter(v["x"], v["y"], label=k, marker=v["marker"])
     plt.xlabel("x")
     plt.ylabel("y")
@@ -49,29 +47,25 @@ def plot_array(hdf5_file, layout="configuration/instrument/subarray/layout"):
     plt.show()
 
 
-def plot_telescope_geometry(tel_type, pixel_positions,
-                            num_pixels=None, is_aligned=False):
+def plot_telescope_geometry(tel_type, pixel_positions, num_pixels=None):
     shape = pixel_positions.shape
     if num_pixels is None:
         num_pixels = shape[-1]
     colors = cm.rainbow(np.linspace(0, 1, num_pixels))
     if shape[0] == 2:
-        plt.figure(figsize=(8, 8))
+        plt.figure(figsize=(8,8))
         plt.title(f"{tel_type}\n pixels: {num_pixels}")
         plt.scatter(pixel_positions[0], pixel_positions[1], color=colors)
     elif shape[0] == 3:
-        _, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
-        plt.suptitle(f"{tel_type}\n pixels: {num_pixels}")
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
+        plt.suptitle(f"{tel_type}\n pixels: {num_pixels}")        
         ax1.scatter(pixel_positions[0], pixel_positions[2], color=colors)
         ax2.scatter(pixel_positions[1], pixel_positions[2], color=colors)
-    if is_aligned:
-        plt.gca().invert_yaxis()
     plt.show()
 
 
-def plot_observation_scatter(charge, peakpos, mask, pixel_positions,
-                             telescope_type=None, event_unique_id=None):
-    fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(20, 6))
+def plot_observation_scatter(charge, peakpos, mask, pixel_positions, telescope_type=None, event_unique_id=None):
+    fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(20,6))
     ax1.set_title("Charge")
     divider = make_axes_locatable(ax1)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -90,6 +84,7 @@ def plot_observation_scatter(charge, peakpos, mask, pixel_positions,
     if event_unique_id is None:
         title = f"{'' if telescope_type is None else telescope_type}"
     else:
-        title = f"{'' if telescope_type is None else telescope_type}\nevent: {event_unique_id}"  # noqa
+        title = f"{'' if telescope_type is None else telescope_type}\nevent: {event_unique_id}"
+
     plt.suptitle(title)
     plt.show()
