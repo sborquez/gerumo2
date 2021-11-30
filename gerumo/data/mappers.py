@@ -36,10 +36,6 @@ class SimpleSquareImage(InputMapper):
     def __init__(self) -> None:
         super().__init__()
 
-    @classmethod
-    def from_config(cls, cfg):
-        pass
-
     def __call__(self, event_df: pd.DataFrame) -> Observations:
         pass
 
@@ -70,13 +66,23 @@ class OutputMapper:
         raise NotImplementedError
 
 
+class OutputClassificationMapper(OutputMapper):
+    task = Task.CLASSIFICATION
+
+    def __init__(self, target, num_classes, classes) -> None:
+        super().__init__()
+
+    @classmethod
+    def from_config(cls, cfg):
+        return {
+            "target": cfg.INPUT.target,
+            "num_classes": cfg.INPUT.NUM_CLASSES,
+            "classes": cfg.INPUT.CLASSES
+        }
+
+
 class OutputRegressionMapper(OutputMapper):
     task = Task.REGRESSION
-
-    def __init__(self, targets, domains) -> None:
-        super().__init__()
-        self.targets = targets
-        self.domains = domains
 
     @classmethod
     def from_config(cls, cfg):
@@ -88,70 +94,29 @@ class OutputRegressionMapper(OutputMapper):
 
 @OUTPUT_MAPPER_REGISTRY.register()
 class SimpleRegression(OutputRegressionMapper):
-
     @configurable
     def __init__(self, targets, domains) -> None:
         super().__init__(targets=targets, domains=domains)
 
     def __call__(self, event_df: pd.DataFrame) -> Event:
-        event_row = event_df.iloc[0]
-        event = Event(
-            event_unique_id=event_row.event_unique_id,
-            energy=event_row.true_energy,
-            **{target: event_row[target] for target in self.targets}
-        )
-        return event
-
-
-class OutputClassificationMapper(OutputMapper):
-    task = Task.CLASSIFICATION
-
-    def __init__(self, target, num_classes, classes) -> None:
-        super().__init__()
-        assert num_classes == len(classes)
-        self.target = target
-        self.num_classes = num_classes
-        self.classes = classes
-
-    @classmethod
-    def from_config(cls, cfg):
-        return {
-            "target": cfg.INPUT.target,
-            "num_classes": cfg.INPUT.NUM_CLASSES,
-            "classes": cfg.INPUT.CLASSES
-        }
+        pass
 
 
 @OUTPUT_MAPPER_REGISTRY.register()
 class SimpleCategorical(OutputClassificationMapper):
-
     @configurable
     def __init__(self, target, num_classes, classes) -> None:
         super().__init__(target, num_classes, classes)
 
     def __call__(self, event_df: pd.DataFrame) -> Event:
-        event_row = event_df.iloc[0]
-        event = Event(
-                    event_unique_id=event_row.event_unique_id,
-                    energy=event_row.true_energy,
-                    gt_class_id=self.classes.index(event_row[self.target])
-                )
-        return event
+        pass
 
 
 @OUTPUT_MAPPER_REGISTRY.register()
 class OnevsAllClassification(OutputClassificationMapper):
     @configurable
     def __init__(self, target, num_classes, classes) -> None:
-        assert num_classes == 2
-        classes = [f"not_{classes[0]}", classes[0]]
         super().__init__(target, num_classes, classes)
 
     def __call__(self, event_df: pd.DataFrame) -> Event:
-        event_row = event_df.iloc[0]
-        event = Event(
-                    event_unique_id=event_row.event_unique_id,
-                    energy=event_row.true_energy,
-                    true_class_id=int(event_row[self.target] == self.classes[1]) # noqa
-                )
-        return event
+        pass

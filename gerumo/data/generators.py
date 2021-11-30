@@ -70,7 +70,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
         # Generate indexes of the batch
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
         # Generate data
-        observations, events = self._data_generation(indexes)
+        observations, events = self.__data_generation(indexes)
         return observations, events
 
     def from_config(cls, cfg, dataset):
@@ -92,8 +92,8 @@ class MonoGenerator(BaseGenerator):
                  batch_size: int,
                  input_mapper: InputMapper,
                  output_mapper: OutputMapper,
-                 shuffle: bool = True,
-                 strict_shuffle: bool = False) -> None:
+                 shuffle: bool,
+                 strict_shuffle: bool) -> None:
         super().__init__(
             dataset, batch_size, input_mapper, output_mapper, shuffle
         )
@@ -122,10 +122,6 @@ class MonoGenerator(BaseGenerator):
             else:
                 np.random.shuffle(self.indexes)
         return self.indexes
-
-    def _filter_telescope_dataset(self, dataset):
-        self.src_dataset = dataset
-        self.dataset = dataset[dataset[""]]
 
     def _data_generation(self,
                          list_indexes: np.ndarray

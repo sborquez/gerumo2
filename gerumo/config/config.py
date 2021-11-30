@@ -230,22 +230,20 @@ class CfgNode(_CfgNode):
     """
 
     # Note that the default value of allow_unsafe is changed to True
-    def merge_from_file(self, cfg_filename: str,
-                        allow_unsafe: bool = True) -> None:
+    def merge_from_file(self, cfg_filename: str, allow_unsafe: bool = True) -> None:
         """
         Load content from the given config file and merge it into self.
         Args:
             cfg_filename: config filename
             allow_unsafe: allow unsafe yaml syntax
         """
-        # assert PathManager.isfile(cfg_filename),
-        # f"Config file '{cfg_filename}' does not exist!"
-        loaded_cfg = self.load_yaml_with_base(cfg_filename,
-                                              allow_unsafe=allow_unsafe)
+        #assert PathManager.isfile(cfg_filename), f"Config file '{cfg_filename}' does not exist!"
+        loaded_cfg = self.load_yaml_with_base(cfg_filename, allow_unsafe=allow_unsafe)
         loaded_cfg = type(self)(loaded_cfg)
 
         # defaults.py needs to import CfgNode
-        from .defaults import _C # noqa
+        from .defaults import _C
+
 
     def dump(self, *args, **kwargs):
         """
@@ -280,8 +278,7 @@ def set_global_cfg(cfg: CfgNode) -> None:
         print(global_cfg.KEY)
     By using a hacky global config, you can access these configs anywhere,
     without having to pass the config object or the values deep into the code.
-    This is a hacky feature introduced for quick prototyping / research
-    exploration.
+    This is a hacky feature introduced for quick prototyping / research exploration.
     """
     global global_cfg
     global_cfg.clear()
@@ -291,8 +288,7 @@ def set_global_cfg(cfg: CfgNode) -> None:
 def configurable(init_func=None, *, from_config=None):
     """
     Decorate a function or a class's __init__ method so that it can be called
-    with a :class:`CfgNode` object using a :func:`from_config` function that
-    translates
+    with a :class:`CfgNode` object using a :func:`from_config` function that translates
     :class:`CfgNode` to arguments.
     Examples:
     ::
@@ -308,8 +304,7 @@ def configurable(init_func=None, *, from_config=None):
         a1 = A(a=1, b=2)  # regular construction
         a2 = A(cfg)       # construct with a cfg
         a3 = A(cfg, b=3, c=4)  # construct with extra overwrite
-        # Usage 2: Decorator on any function. Needs an extra from_config
-        # argument:
+        # Usage 2: Decorator on any function. Needs an extra from_config argument:
         @configurable(from_config=lambda cfg: {"a: cfg.A, "b": cfg.B})
         def a_func(a, b=2, c=3):
             pass
@@ -320,8 +315,7 @@ def configurable(init_func=None, *, from_config=None):
         init_func (callable): a class's ``__init__`` method in usage 1. The
             class must have a ``from_config`` classmethod which takes `cfg` as
             the first argument.
-        from_config (callable): the from_config function in usage 2. It must
-        take `cfg`
+        from_config (callable): the from_config function in usage 2. It must take `cfg`
             as its first argument.
     """
 
@@ -330,7 +324,7 @@ def configurable(init_func=None, *, from_config=None):
             inspect.isfunction(init_func)
             and from_config is None
             and init_func.__name__ == "__init__"
-        ), "Incorrect use of @configurable. Check API documentation forexamples." # noqa
+        ), "Incorrect use of @configurable. Check API documentation for examples."
 
         @functools.wraps(init_func)
         def wrapped(self, *args, **kwargs):
@@ -338,13 +332,13 @@ def configurable(init_func=None, *, from_config=None):
                 from_config_func = type(self).from_config
             except AttributeError as e:
                 raise AttributeError(
-                    "Class with @configurable must have a 'from_config' classmethod." # noqa
+                    "Class with @configurable must have a 'from_config' classmethod."
                 ) from e
             if not inspect.ismethod(from_config_func):
-                raise TypeError("Class with @configurable must have a 'from_config' classmethod.") # noqa
+                raise TypeError("Class with @configurable must have a 'from_config' classmethod.")
 
             if _called_with_cfg(*args, **kwargs):
-                explicit_args = _get_args_from_config(from_config_func, *args, **kwargs)  # noqa
+                explicit_args = _get_args_from_config(from_config_func, *args, **kwargs)
                 init_func(self, **explicit_args)
             else:
                 init_func(self, *args, **kwargs)
@@ -353,8 +347,7 @@ def configurable(init_func=None, *, from_config=None):
 
     else:
         if from_config is None:
-            # @configurable() is made equivalent to @configurable
-            return configurable
+            return configurable  # @configurable() is made equivalent to @configurable
         assert inspect.isfunction(
             from_config
         ), "from_config argument of configurable must be a function!"
@@ -363,7 +356,7 @@ def configurable(init_func=None, *, from_config=None):
             @functools.wraps(orig_func)
             def wrapped(*args, **kwargs):
                 if _called_with_cfg(*args, **kwargs):
-                    explicit_args = _get_args_from_config(from_config, *args, **kwargs) # noqa
+                    explicit_args = _get_args_from_config(from_config, *args, **kwargs)
                     return orig_func(**explicit_args)
                 else:
                     return orig_func(*args, **kwargs)
@@ -391,8 +384,7 @@ def _get_args_from_config(from_config_func, *args, **kwargs):
         param.kind in [param.VAR_POSITIONAL, param.VAR_KEYWORD]
         for param in signature.parameters.values()
     )
-    # forward all arguments to from_config, if from_config accepts them
-    if support_var_arg:
+    if support_var_arg:  # forward all arguments to from_config, if from_config accepts them
         ret = from_config_func(*args, **kwargs)
     else:
         # forward supported arguments to from_config
