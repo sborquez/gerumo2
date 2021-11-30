@@ -52,10 +52,10 @@ _C.DATASETS.TEST.EVENTS = None
 _C.DATASETS.TEST.TELESCOPES = None
 _C.DATASETS.TEST.FOLDER = None
 # Agregate dataset
-_C.DATASETS.AGGREGATION = CN()
-_C.DATASETS.AGGREGATION.CENTER_AZ = True
-_C.DATASETS.AGGREGATION.LOG10_ENERGY = True
-_C.DATASETS.AGGREGATION.HDF5_FILEPATH = True
+_C.DATASET.AGGREGATION = CN()
+_C.DATASET.AGGREGATION.CENTER_AZ = True
+_C.DATASET.AGGREGATION.LOG10_ENERGY = True
+_C.DATASET.AGGREGATION.HDF5_FILEPATH = True
 # -----------------------------------------------------------------------------
 # Generator
 # -----------------------------------------------------------------------------
