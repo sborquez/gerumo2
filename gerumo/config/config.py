@@ -244,7 +244,7 @@ class CfgNode(_CfgNode):
         # defaults.py needs to import CfgNode
         from .defaults import _C
 
-
+        
     def dump(self, *args, **kwargs):
         """
         Returns:
