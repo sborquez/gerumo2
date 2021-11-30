@@ -1,24 +1,21 @@
-import sys
-sys.path.insert(1, '..')
-
+import sys; sys.path.insert(1, '..')  # noqa
+from os import path, makedirs
+import argparse
 from gerumo.data.dataset import (
     load_dataset, split_dataset, save_dataset, describe_dataset
 )
-import argparse
-from glob import glob
-from os import path, makedirs
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Split extracted dataset.")
-    parser.add_argument("-i", "--dataset", type=str, required=True, 
-                    help="Folder with events and telescopes parquet datasets.")
-    parser.add_argument("-o", "--output", type=str, required=True, 
-                    help="Output folder.")
+    parser.add_argument("-i", "--dataset", type=str, required=True,
+                        help="Folder with events and telescopes parquet datasets.")  # noqa
+    parser.add_argument("-o", "--output", type=str, required=True,
+                        help="Output folder.")
     parser.add_argument("-s", "--split", type=float, default=0.1,
-                    help="Validation ratio for split data.")
+                        help="Validation ratio for split data.")
     args = parser.parse_args()
 
-    assert 0 < args.split and args.split < 1, "split not in (0, 1) range"  
+    assert 0 < args.split and args.split < 1, "split not in (0, 1) range"
     events_folder = path.join(args.dataset, "events")
     telescopes_folder = path.join(args.dataset, "telescopes")
     dataset = load_dataset(events_folder, telescopes_folder)

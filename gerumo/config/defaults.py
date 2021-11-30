@@ -1,5 +1,5 @@
 from .config import CfgNode as CN
-from ..utils.structures import Task
+from ..utils.structures import Task, ReconstructionMode
 
 # -----------------------------------------------------------------------------
 # Config definition
@@ -10,6 +10,7 @@ _C = CN()
 # -----------------------------------------------------------------------------
 _C.MODEL = CN()
 _C.MODEL.DEVICE = "cuda"
+_C.MODEL.RECONSTRUCTION_MODE = ReconstructionMode.SINGLE.name
 _C.MODEL.TASK = Task.REGRESSION.name
 _C.MODEL.TELESCOPES = ["LST_LSTCam"]   # Telescope {type}_{camera_type}
 _C.MODEL.WEIGHTS = None  # Path  to a checkpoint file to be loaded to the model
@@ -74,7 +75,9 @@ _C.GENERATOR.USE_STRICT_SHUFFLE = False
 _C.INPUT = CN()
 _C.INPUT.MAPPER = CN()
 _C.INPUT.MAPPER.NAME = "SimpleSquareImage"
-_C.INPUT.IMAGES_CHANNELS = ["charge", "time_peaks", "mask"]
+_C.INPUT.MAPPER.ARGS = []   # [Any, ...]
+_C.INPUT.MAPPER.KWARGS = []  # [(str, Any), ...]
+_C.INPUT.IMAGE_CHANNELS = ["charge", "time_peaks", "mask"]
 _C.INPUT.TELESCOPE_FEATURES = []
 # -----------------------------------------------------------------------------
 # Output
