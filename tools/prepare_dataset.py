@@ -17,8 +17,6 @@ if __name__ == "__main__":
                     help="File with list of hdf5 files, if is not None, ignore folder argument.")  # noqa
     parser.add_argument("-o", "--output", type=str, required=True,
                         help="Ouput folder.")
-    parser.add_argument("-s", "--split", type=float, default=0.1,
-                        help="Validation ratio for split data.")
     parser.add_argument("-w", "--overwrite", dest='overwrite', action='store_true')  # noqa
     args = parser.parse_args()
 
