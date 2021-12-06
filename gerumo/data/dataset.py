@@ -20,6 +20,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+
 """
 Tables routes
 ============
@@ -496,7 +497,7 @@ def save_dataset(dataset, output_folder, prefix=None):
     return event_path, telescope_path
 
 
-def describe_dataset(dataset, save_to=None):
+def describe_dataset(dataset, logger=None, save_to=None):
     """Print a description of the dataset
 
     Args:
@@ -507,12 +508,18 @@ def describe_dataset(dataset, save_to=None):
     events = dataset.event_unique_id.nunique()
     obs = len(dataset)
     by_telescope = dataset.camera_type.value_counts()
-    print('files', files)
-    print('events', events)
-    print('observations', obs)
-    print('obsevation by telescopes')
-    print(by_telescope)
-
+    if logger is None:
+        print('files', files)
+        print('events', events)
+        print('observations', obs)
+        print('obsevation by telescopes')
+        print(by_telescope)
+    else:
+        logger.info(f'files: {files}')
+        logger.info(f'events: {events}')
+        logger.info(f'observations: {obs}')
+        logger.info('obsevation by telescopes')
+        logger.info(by_telescope)
     if save_to is not None:
         with open(save_to, 'w') as save_file:
             save_file.write(f'files: {files}\n')
@@ -522,8 +529,8 @@ def describe_dataset(dataset, save_to=None):
             save_file.write(by_telescope.to_string())
 
 
-def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
-                      hdf5_file=True, remove_nan=True):
+def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True,
+                      remove_nan=True, ignore_particle_types=[]):
     """Perform simple aggegation to targe columns.
 
     Args:
@@ -533,7 +540,8 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
         log10_mc_energy (bool, optional): Add new log10_mc_energy column,
             with the logarithm values of mc_energy. Defaults to True.
         hdf5_file (bool, optional): Replace source folder. Defaults to True.
-
+        ignore_particle_types (list[str], optional): Ignore samples with a 
+            particle type from the list.
     Returns:
         pd.DataFrame: Dataset with aggregate information.
     """
@@ -552,4 +560,6 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
             )
     if remove_nan:
         dataset.dropna(inplace=True)
+    if ignore_particle_types:
+        dataset = dataset[~dataset.particle_type.isin(ignore_particle_types)]
     return dataset

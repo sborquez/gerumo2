@@ -246,9 +246,9 @@ class OutputClassificationMapper(OutputMapper):
     @classmethod
     def from_config(cls, cfg):
         return {
-            "target": cfg.INPUT.target,
-            "num_classes": cfg.INPUT.NUM_CLASSES,
-            "classes": cfg.INPUT.CLASSES
+            "target": cfg.OUTPUT.CLASSIFICATION.TARGET,
+            "num_classes": cfg.OUTPUT.CLASSIFICATION.NUM_CLASSES,
+            "classes": cfg.OUTPUT.CLASSIFICATION.CLASSES
         }
 
 
@@ -260,7 +260,7 @@ class SimpleCategorical(OutputClassificationMapper):
         super().__init__(target, num_classes, classes)
 
     def __call__(self, event_df: pd.DataFrame) -> Event:
-        """Convert event dataframe into Event structure for classification.
+        """Convert event dataframe into Event structure for (sparse) classification.
         Args:
             event_df (pd.Dataframe): Dataset of observations for an event.
                 If it is SINGLE reconstruction, `event_df` has length 1.
