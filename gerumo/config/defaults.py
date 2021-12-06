@@ -12,17 +12,15 @@ _C.MODEL = CN()
 _C.MODEL.DEVICE = "cuda"
 _C.MODEL.RECONSTRUCTION_MODE = ReconstructionMode.SINGLE.name
 _C.MODEL.TASK = Task.REGRESSION.name
-_C.MODEL.TELESCOPES = ["LST_LSTCam"]   # Telescope {type}_{camera_type}
+_C.MODEL.TELESCOPES = ["LST"]   # Telescope {type}_{camera_type}
 _C.MODEL.WEIGHTS = None  # Path  to a checkpoint file to be loaded to the model
 # Models Loss
 _C.MODEL.LOSS = CN()
 _C.MODEL.LOSS.NAME = "MAE"
-_C.MODEL.LOSS.ARGS = []   # [Any, ...]
 _C.MODEL.LOSS.KWARGS = []  # [(str, Any), ...]
 # Model Architecture
 _C.MODEL.ARCHITECTURE = CN()
 _C.MODEL.ARCHITECTURE.NAME = "CNN"
-_C.MODEL.ARCHITECTURE.ARGS = []   # [Any, ...]
 _C.MODEL.ARCHITECTURE.KWARGS = []  # [(str, Any), ...]
 # -----------------------------------------------------------------------------
 # Ensembler Stereo/Multi-Stereo
@@ -75,7 +73,6 @@ _C.GENERATOR.USE_STRICT_SHUFFLE = False
 _C.INPUT = CN()
 _C.INPUT.MAPPER = CN()
 _C.INPUT.MAPPER.NAME = "SimpleSquareImage"
-_C.INPUT.MAPPER.ARGS = []   # [Any, ...]
 _C.INPUT.MAPPER.KWARGS = []  # [(str, Any), ...]
 _C.INPUT.IMAGE_CHANNELS = ["charge", "time_peaks", "mask"]
 _C.INPUT.TELESCOPE_FEATURES = []
