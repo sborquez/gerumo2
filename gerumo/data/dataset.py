@@ -313,7 +313,7 @@ def _process_file(data):
 
 
 def generate_dataset_multiprocess(file_paths: str, output_folder: str,
-                                 processes: int = 8, append: bool = False):
+                                  processes: int = 8, append: bool = False):
     """Generate events.parquet and telescope.parquet files.
     Files generated contains information about the events and their
     observations and are used to reference the compressed hdf5 files
