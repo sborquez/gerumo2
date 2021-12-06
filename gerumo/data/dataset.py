@@ -9,6 +9,8 @@ by the models.
 from os import (makedirs, path)
 from shutil import rmtree
 from posix import listdir
+from itertools import repeat
+from multiprocessing import Pool
 from tqdm import tqdm
 import uuid
 import tables
@@ -84,8 +86,10 @@ telescope_fieldnames = [
 ] + hillas_parameters
 
 
-def extract_data(hdf5_filepath):
+def extract_data(hdf5_filepath, enable_pbar=True, logger=None):
     """Extract data from one hdf5 file."""
+    if logger is None:
+        logger = logging.getLogger()
     hdf5_file = tables.open_file(hdf5_filepath, "r")
     source = path.basename(hdf5_filepath)
     folder = path.dirname(hdf5_filepath)
@@ -111,12 +115,20 @@ def extract_data(hdf5_filepath):
     telescopes_ids = np.arange(1, 1+n_telescopes)
     n_events = len(hdf5_file.root[event_info_table])
     try:
-        pbar = tqdm(
-            zip(hdf5_file.root[event_info_table],
-                hdf5_file.root[event_triggers_table]),
-            total=n_events
-            )
-        for event_gt, triggers in pbar:
+        total = n_events
+        if enable_pbar:
+            iterable = tqdm(
+                zip(hdf5_file.root[event_info_table],
+                    hdf5_file.root[event_triggers_table]),
+                total=total
+                )
+        else:
+            iterable = zip(hdf5_file.root[event_info_table],
+                           hdf5_file.root[event_triggers_table])
+        processed = 0
+        for event_gt, triggers in iterable:
+            if (not enable_pbar) and (processed % 500 == 0):
+                logger.info(f"Events processed {processed}/{total}")
             # Event data
             # add uuid to avoid duplicated event numbers
             event_unique_id = uuid.uuid4().hex[:20]
@@ -158,16 +170,17 @@ def extract_data(hdf5_filepath):
                 'true_energy': event_gt['true_energy'],
                 'particle_type': particle_type
             })
+            processed += 1
     except KeyboardInterrupt:
-        logging.info("Extraction stopped.")
+        logger.info("Extraction stopped.")
     except Exception as err:
-        logging.error(err)
-        logging.info("Extraction ended by an error.")
+        logger.error(err)
+        logger.info("Extraction ended by an error.")
     else:
-        logging.info("Extraction ended successfully.")
+        logger.info("Extraction ended successfully.")
     finally:
-        logging.debug(f"Total events: {len(events_data)}")
-        logging.debug(f"Total observations: {len(telescopes_data)}")
+        logger.debug(f"Total events: {len(events_data)}")
+        logger.debug(f"Total observations: {len(telescopes_data)}")
         hdf5_file.close()
 
     return pd.DataFrame(events_data), pd.DataFrame(telescopes_data)
@@ -194,7 +207,7 @@ def append_to_parquet_table(dataframe, filepath=None, writer=None):
 
 
 def generate_dataset(file_paths, output_folder, append=False):
-    """Generate events.csv and telescope.csv files.
+    """Generate events.parquet and telescope.parquet files.
     Files generated contains information about the events and their
     observations and are used to reference the compressed hdf5 files
     with the data.
@@ -208,7 +221,7 @@ def generate_dataset(file_paths, output_folder, append=False):
             files, otherwise create new file. Defaults to False.
 
     Returns:
-        tuple(str): events.csv and telescope.csv path.
+        tuple(str): events.parquet and telescope.parquet path.
     """
     # hdf5 files
     files = [path.abspath(file) for file in file_paths]
@@ -230,7 +243,7 @@ def generate_dataset(file_paths, output_folder, append=False):
         rmtree(events_folder)
         rmtree(telescopes_folder)
 
-    # If output folder doesnt exists
+    # If output folder doesn't exists
     if not path.exists(output_folder):
         logging.info("creating folder {telescopes_folder}")
         logging.info("creating folder {events_folder}")
@@ -274,6 +287,105 @@ def generate_dataset(file_paths, output_folder, append=False):
         telescope_writer.close()
     logging.info(f"Events file: {events_filepath}")
     logging.info(f"Telescopes file: {telescopes_filepath}")
+    return events_folder, telescopes_folder
+
+
+def _process_file(data):
+    idx, (file, events_folder, telescopes_folder) = data
+    logger = logging.getLogger(f"parquet {idx}")
+    logger.setLevel(logging.INFO)
+    events_filepath = path.join(events_folder, f"events{idx}.parquet")  # noqa: E501
+    telescopes_filepath = path.join(telescopes_folder, f"telescopes{idx}.parquet")  # noqa: E501
+    logger.info(f"Extracting: {file}")
+    events_writer, telescope_writer = None, None
+    try:
+        events_data, telescopes_data = extract_data(file, enable_pbar=False, logger=logger)
+        total_events = len(events_data)
+        total_observations = len(telescopes_data)
+        logger.info(f"Writing: {events_filepath}")
+        events_writer = append_to_parquet_table(
+            events_data, filepath=events_filepath)
+        logger.info(f"Writing: {telescopes_filepath}")
+        telescope_writer = append_to_parquet_table(
+            telescopes_data, filepath=telescopes_filepath)
+    except KeyboardInterrupt:
+        logger.warning("Extraction stopped.")
+        total_events, total_observations = 0, 0
+    except Exception as err:
+        logger.warning("Error during extraction.", err)
+        total_events, total_observations = 0, 0
+    finally:
+        # close writers
+        if events_writer is not None:
+            events_writer.close()
+        if telescope_writer is not None:
+            telescope_writer.close()
+        return total_events, total_observations
+
+
+def generate_dataset_multiprocess(file_paths: str, output_folder: str,
+                                  processes: int = 8, append: bool = False):
+    """Generate events.parquet and telescope.parquet files.
+    Files generated contains information about the events and their
+    observations and are used to reference the compressed hdf5 files
+    with the data.
+
+    Args:
+        file_paths (list(str)) : List of path to hdf5 files, use these files
+            to generate the dataset.
+        output_folder (str, optional) : Path to folder where dataset files
+            will be saved. Defaults to './output'
+        processes (int, optional): Number of processes.
+        append (bool, optional): Append new events and telescopes to existing
+            files, otherwise create new file. Defaults to False.
+
+    Returns:
+        tuple(str): events.parquet and telescope.parquet path.
+    """
+    # hdf5 files
+    files = [path.abspath(file) for file in file_paths]
+
+    # Check if list is not empty
+    logging.debug(f"{len(files)} files found.")
+    if len(files) == 0:
+        raise FileNotFoundError
+
+    # Dataset folders
+    events_folder = path.join(output_folder, "events")
+    telescopes_folder = path.join(output_folder, "telescopes")
+
+    # If overwrite, remove existing files
+    if not append and path.exists(output_folder):
+        events_files = len(listdir(events_folder)) if path.exists(events_folder) else 0   # noqa: E501
+        telescopes_files = len(listdir(telescopes_folder)) if path.exists(telescopes_folder) else 0  # noqa: E501
+        logging.warning(f"Removing existing datasets: {events_files + telescopes_files} files")  # noqa: E501
+        rmtree(events_folder)
+        rmtree(telescopes_folder)
+
+    # If output folder doesn't exists
+    if not path.exists(output_folder):
+        logging.info(f"creating folder {telescopes_folder}")
+        logging.info(f"creating folder {events_folder}")
+    makedirs(path.join(output_folder, "telescopes"), exist_ok=True)
+    makedirs(path.join(output_folder, "events"), exist_ok=True)
+
+    # Appending index
+    file_counter = len(listdir(events_folder))
+
+    # Concurrently iterate over h5 files
+    input_data = enumerate(
+        zip(files, repeat(events_folder), repeat(telescopes_folder)),
+        start=file_counter)
+    pool = Pool(processes)
+    try:
+        ret = pool.map(_process_file, input_data)
+    except KeyboardInterrupt:
+        logging.info("Extraction interrupted!")
+    else:
+        total_events, total_observations = list(zip(*ret))
+        logging.info("Extraction ended successfully!")
+        logging.info(f"Total events: {sum(total_events)}")
+        logging.info(f"Total observations: {sum(total_observations)}")
     return events_folder, telescopes_folder
 
 
