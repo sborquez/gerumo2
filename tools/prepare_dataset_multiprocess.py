@@ -4,7 +4,7 @@ from glob import glob
 from os import path
 import time
 from gerumo.data.dataset import (
-    generate_dataset_multithread, load_dataset, describe_dataset
+    generate_dataset_multiprocess, load_dataset, describe_dataset
 )
 
 import logging
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # Process the list of files
     if len(files) > 0:
         t = time.process_time()
-        events_folder, telescopes_folder = generate_dataset_multithread(
+        events_folder, telescopes_folder = generate_dataset_multiprocess(
             file_paths=files, output_folder=args.output,
             processes=args.processes, append=not args.overwrite
         )

@@ -312,7 +312,7 @@ def _process_file(data):
         return total_events, total_observations
 
 
-def generate_dataset_multithread(file_paths: str, output_folder: str,
+def generate_dataset_multiprocess(file_paths: str, output_folder: str,
                                  processes: int = 8, append: bool = False):
     """Generate events.parquet and telescope.parquet files.
     Files generated contains information about the events and their
