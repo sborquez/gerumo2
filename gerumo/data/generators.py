@@ -21,14 +21,16 @@ from ..data.mappers import (
 )
 # from sklearn import utils
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
 GENERATOR_REGISTRY = Registry("GENERATOR")
 GENERATOR_REGISTRY.__doc__ = """
 Registry for Generators.
 The registered object will be called with `obj(cfg, dataset)`.
 The call is expected to return an :class:`BaseGenerator`.
 """
-
-logger = logging.getLogger(__name__)
 
 
 def build_generator(cfg, dataset) -> 'BaseGenerator':

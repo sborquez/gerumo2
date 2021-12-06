@@ -79,7 +79,6 @@ class SimpleSquareImage(InputMapper):
     """
     Transform raw format to one square matrix.
     """
-    _ARGS = []
     _KWARGS = []
 
     @configurable
