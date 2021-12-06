@@ -86,8 +86,10 @@ telescope_fieldnames = [
 ] + hillas_parameters
 
 
-def extract_data(hdf5_filepath, enable_pbar=True):
+def extract_data(hdf5_filepath, enable_pbar=True, logger=None):
     """Extract data from one hdf5 file."""
+    if logger is None:
+        logger = logging.getLogger()
     hdf5_file = tables.open_file(hdf5_filepath, "r")
     source = path.basename(hdf5_filepath)
     folder = path.dirname(hdf5_filepath)
@@ -113,16 +115,20 @@ def extract_data(hdf5_filepath, enable_pbar=True):
     telescopes_ids = np.arange(1, 1+n_telescopes)
     n_events = len(hdf5_file.root[event_info_table])
     try:
+        total = n_events
         if enable_pbar:
             iterable = tqdm(
                 zip(hdf5_file.root[event_info_table],
                     hdf5_file.root[event_triggers_table]),
-                total=n_events
+                total=total
                 )
         else:
             iterable = zip(hdf5_file.root[event_info_table],
                            hdf5_file.root[event_triggers_table])
+        processed = 0
         for event_gt, triggers in iterable:
+            if (not enable_pbar) and (processed % 500 == 0):
+                logger.info(f"Events processed {processed}/{total}")
             # Event data
             # add uuid to avoid duplicated event numbers
             event_unique_id = uuid.uuid4().hex[:20]
@@ -164,16 +170,17 @@ def extract_data(hdf5_filepath, enable_pbar=True):
                 'true_energy': event_gt['true_energy'],
                 'particle_type': particle_type
             })
+            processed += 1
     except KeyboardInterrupt:
-        logging.info("Extraction stopped.")
+        logger.info("Extraction stopped.")
     except Exception as err:
-        logging.error(err)
-        logging.info("Extraction ended by an error.")
+        logger.error(err)
+        logger.info("Extraction ended by an error.")
     else:
-        logging.info("Extraction ended successfully.")
+        logger.info("Extraction ended successfully.")
     finally:
-        logging.debug(f"Total events: {len(events_data)}")
-        logging.debug(f"Total observations: {len(telescopes_data)}")
+        logger.debug(f"Total events: {len(events_data)}")
+        logger.debug(f"Total observations: {len(telescopes_data)}")
         hdf5_file.close()
 
     return pd.DataFrame(events_data), pd.DataFrame(telescopes_data)
@@ -285,23 +292,27 @@ def generate_dataset(file_paths, output_folder, append=False):
 
 def _process_file(data):
     idx, (file, events_folder, telescopes_folder) = data
+    logger = logging.getLogger(f"parquet {idx}")
+    logger.setLevel(logging.INFO)
     events_filepath = path.join(events_folder, f"events{idx}.parquet")  # noqa: E501
     telescopes_filepath = path.join(telescopes_folder, f"telescopes{idx}.parquet")  # noqa: E501
-    logging.info(f"[parquet {idx}] - Extracting: {file}")
+    logger.info(f"Extracting: {file}")
     events_writer, telescope_writer = None, None
     try:
-        events_data, telescopes_data = extract_data(file, enable_pbar=False)
+        events_data, telescopes_data = extract_data(file, enable_pbar=False, logger=logger)
         total_events = len(events_data)
         total_observations = len(telescopes_data)
+        logger.info(f"Writing: {events_filepath}")
         events_writer = append_to_parquet_table(
             events_data, filepath=events_filepath)
+        logger.info(f"Writing: {telescopes_filepath}")
         telescope_writer = append_to_parquet_table(
             telescopes_data, filepath=telescopes_filepath)
     except KeyboardInterrupt:
-        logging.warning("Extraction stopped.")
+        logger.warning("Extraction stopped.")
         total_events, total_observations = 0, 0
     except Exception as err:
-        logging.warning("Error during extraction.", err)
+        logger.warning("Error during extraction.", err)
         total_events, total_observations = 0, 0
     finally:
         # close writers
