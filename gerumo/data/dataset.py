@@ -416,7 +416,7 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
 
     Args:
         dataset (pd.DataFrame): [description]
-        az (bool, optional): Translate domain from [0, 2pi] to [-pi, pi].
+        az (bool, optional): Translate domain from [0, 360] to [-180, 180].
             Defaults to True.
         log10_mc_energy (bool, optional): Add new log10_mc_energy column,
             with the logarithm values of mc_energy. Defaults to True.
@@ -426,9 +426,10 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
         pd.DataFrame: Dataset with aggregate information.
     """
     if az:
-        dataset["true_az"] = dataset["true_az"].apply(
-            lambda rad: np.arctan2(np.sin(rad), np.cos(rad))
-            )
+        dataset["true_az"] = np.rad2deg(
+            np.deg2rad(dataset["true_az"]).apply(
+                lambda rad: np.arctan2(np.sin(rad), np.cos(rad))
+            ))
     if log10_mc_energy:
         dataset["true_log10_energy"] = dataset["true_energy"].apply(
             lambda energy: np.log10(energy)
