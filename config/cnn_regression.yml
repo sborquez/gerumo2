@@ -1,0 +1,16 @@
+
+MODEL:
+  ARCHITECTURE:
+    KWARGS:
+    - ['hexconv', False]
+    - ['num_targets', 2]
+    NAME: CNN
+  DEVICE: cuda
+  LOSS:
+    KWARGS: []
+    NAME: MAE
+  RECONSTRUCTION_MODE: SINGLE
+  TASK: REGRESSION
+  TELESCOPES:
+  - LST
+  WEIGHTS: null
