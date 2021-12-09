@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List
+from typing import List, Optional
 import logging
 import tensorflow as tf
 from fvcore.common.registry import Registry
@@ -7,7 +7,7 @@ from fvcore.common.registry import Registry
 from gerumo.data.constants import TELESCOPES
 from ..config.config import configurable
 from ..utils.structures import (
-    Event, Observations, ReconstructionMode, Task, Telescope
+    Event, InputShape, Observations, ReconstructionMode, Task, Telescope
 )
 
 
@@ -22,12 +22,12 @@ The call is expected to return an :class:`BaseModel`.
 """
 
 
-def build_model(cfg) -> 'BaseModel':
+def build_model(cfg, input_shape) -> 'BaseModel':
     """
     Build Models defined by `cfg.MODEL.ARCHITECTURE.NAME`.
     """
     name = cfg.MODEL.ARCHITECTURE.NAME
-    return MODEL_REGISTRY.get(name)(cfg)
+    return MODEL_REGISTRY.get(name)(cfg, input_shape)
 
 
 class BaseModel(tf.keras.Model):
@@ -35,19 +35,23 @@ class BaseModel(tf.keras.Model):
     _KWARGS = []
 
     @configurable
-    def __init__(self, mode: ReconstructionMode, task: Task,
-                 telescopes: List[Telescope], weights: str,
-                 **kwargs):
+    def __init__(self, input_shape: InputShape, mode: ReconstructionMode,
+                 task: Task, telescopes: List[Telescope],
+                 weights: Optional[str] = None, **kwargs):
         super(BaseModel, self).__init__()
+        assert (mode is ReconstructionMode.SINGLE and len(telescopes) == 1) \
+            or (mode is ReconstructionMode.STEREO)
         self.mode = mode
         self.task = task
         self.telescopes = telescopes
         self.weights_path = weights
+        self._input_shape = input_shape
         self.architecture(**kwargs)
 
     @classmethod
-    def from_config(cls, cfg):
+    def from_config(cls, cfg, input_shape):
         config = {
+            'input_shape': input_shape,
             'mode': ReconstructionMode[cfg.MODEL.RECONSTRUCTION_MODE],
             'task': Task[cfg.MODEL.TASK],
             'telescopes': [TELESCOPES[tel] for tel in cfg.MODEL.TELESCOPES],
@@ -101,5 +105,5 @@ def build_ensembler(cfg) -> 'BaseEnsembler':
     return ENSEMBLER_REGISTRY.get(name)(cfg)
 
 
-# class BaseEnsembler:
-#     pass
+class BaseEnsembler:
+    pass

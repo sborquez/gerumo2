@@ -1,10 +1,11 @@
+from abc import abstractmethod
 from typing import List
 import numpy as np
 import pandas as pd
 import tables
 from fvcore.common.registry import Registry
 from ..utils.structures import (
-    Task, ReconstructionMode, Event, Observations, Telescope
+    InputShape, Task, ReconstructionMode, Event, Observations, Telescope
 )
 from ..config.config import configurable
 from .constants import TELESCOPES
@@ -48,6 +49,7 @@ class InputMapper:
         self.telescope_features = telescope_features
         self.mode = mode
 
+    @abstractmethod
     def __call__(self, event_df: pd.DataFrame) -> Observations:
         """Convert event dataframe into Observations structure.
         Args:
@@ -58,6 +60,10 @@ class InputMapper:
         Returns:
             Event: an event.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_input_shape(self) -> InputShape:
         raise NotImplementedError
 
     def load_image_data(self, hdf5_file: str,
@@ -97,6 +103,9 @@ class SimpleSquareImage(InputMapper):
             "telescope_features": telescope_features,
             "mode": ReconstructionMode[reconstruction_mode]
         }
+
+    def get_input_shape(self) -> InputShape:
+        raise NotImplementedError
 
     def raw_to_image(self, data: List[np.ndarray],
                      telescope: Telescope) -> np.ndarray:

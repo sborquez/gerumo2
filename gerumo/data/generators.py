@@ -6,16 +6,17 @@ This modele define generator (keras.Sequential) to feed differents
 models, with their defined input format.
 """
 
+from abc import abstractmethod
 import logging
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 from fvcore.common.registry import Registry
-from typing import List, Tuple
+from typing import Any, List, Tuple, Union
 
 from gerumo.data.constants import TELESCOPES
 from ..config.config import configurable
-from ..utils.structures import Event, Observations, Telescope
+from ..utils.structures import Event, InputShape, Observations, Telescope
 from ..data.mappers import (
     InputMapper, OutputMapper, build_input_mapper, build_output_mapper
 )
@@ -75,9 +76,15 @@ class BaseGenerator(tf.keras.utils.Sequence):
         observations, events = self._data_generation(indexes)
         return observations, events
 
+    @abstractmethod
+    def get_input_shape(self) -> Union[InputShape, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
     def from_config(cls, cfg, dataset):
         raise NotImplementedError
 
+    @abstractmethod
     def _data_generation(self,
                          list_indexes: np.ndarray
                          ) -> Tuple[List[Observations], List[Event]]:
@@ -118,6 +125,15 @@ class MonoGenerator(BaseGenerator):
             "shuffle": cfg.GENERATOR.ENABLE_SHUFFLE,
             "strict_shuffle": cfg.GENERATOR.USE_STRICT_SHUFFLE,
         }
+
+    def get_input_shape(self) -> Union[InputShape, Any]:
+        obs_tensors = self[0][0][0].to_tensor()
+        images_shape, features_shape = None, None
+        if self.input_mapper.image_channels:
+            images_shape = (None, *(obs_tensors[0].shape))
+        if self.input_mapper.telescope_features:
+            features_shape = (None, *(obs_tensors[1].shape))
+        return InputShape(images_shape, features_shape)
 
     def on_epoch_end(self) -> np.ndarray:
         'Updates indexes after each epoch'

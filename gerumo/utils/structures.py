@@ -1,3 +1,4 @@
+from imp import init_builtin
 from pathlib import Path
 from itertools import repeat
 from enum import IntEnum, unique
@@ -19,6 +20,24 @@ class Task(IntEnum):
 class ReconstructionMode(IntEnum):
     SINGLE = 0  # or Mono
     STEREO = 1
+
+
+class InputShape:
+    def __init__(self, images_shape, features_shape):
+        # self.images_shape = (None, 10, 10, 3)
+        # self.features_shape = (None, 2)
+        self.images_shape = images_shape
+        self.features_shape = features_shape
+        self.num_inputs = (images_shape is not None) + (features_shape is not None)
+
+    def has_image(self):
+        return self.images_shape is not None
+
+    def has_features(self):
+        return self.features_shape is not None
+
+    def __repr__(self) -> str:
+        return f"InputShape(images_shape={self.images_shape}, features_shape={self.features_shape})"
 
 
 class Event:
@@ -135,6 +154,8 @@ class Observations:
     For Mono reconstruction it contains a list of length 1.
     For Stereo and Multi-Stereo reconstruction, inputs are grouped
     by the telescope type.
+
+    When transforming into a tensor, it will always return an Tuple
     """
     def __init__(self, event_unique_id: str, mode: ReconstructionMode,
                  telescopes: List['Telescope'],
