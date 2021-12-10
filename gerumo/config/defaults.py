@@ -56,6 +56,7 @@ _C.DATASETS.AGGREGATION = CN()
 _C.DATASETS.AGGREGATION.CENTER_AZ = True
 _C.DATASETS.AGGREGATION.LOG10_ENERGY = True
 _C.DATASETS.AGGREGATION.HDF5_FILEPATH = True
+_C.DATASETS.AGGREGATION.REMOVE_NAN = True
 # -----------------------------------------------------------------------------
 # Generator
 # -----------------------------------------------------------------------------
@@ -74,7 +75,7 @@ _C.INPUT = CN()
 _C.INPUT.MAPPER = CN()
 _C.INPUT.MAPPER.NAME = "SimpleSquareImage"
 _C.INPUT.MAPPER.KWARGS = []  # [(str, Any), ...]
-_C.INPUT.IMAGE_CHANNELS = ["charge", "time_peaks", "mask"]
+_C.INPUT.IMAGE_CHANNELS = ["image", "peak_time", "image_mask"]
 _C.INPUT.TELESCOPE_FEATURES = []
 # -----------------------------------------------------------------------------
 # Output
@@ -131,3 +132,4 @@ _C.OUTPUT_DIR = "./output"
 # reproducibility but does not guarantee fully deterministic behavior.
 # Disabling all parallelism further increases reproducibility.
 _C.SEED = -1
+_C.DETERMINISTIC = False

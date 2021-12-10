@@ -1,11 +1,25 @@
 
+EXPERIMENT_NAME: CNN Regression
+DATASETS:
+  TRAIN:
+    EVENTS: /home/asuka/projects/gerumo2/tools/output/splits/train_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/tools/output/splits/train_telescopes.parquet
+    FOLDER: null
+  VALIDATION:
+    EVENTS: /home/asuka/projects/gerumo2/tools/output/splits/validation_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/tools/output/splits/validation_telescopes.parquet
+    FOLDER: null
+  TEST:
+    EVENTS: null
+    TELESCOPES: null
+    FOLDER: null
 MODEL:
+  DEVICE: cuda
   ARCHITECTURE:
+    NAME: CNN
     KWARGS:
     - ['hexconv', False]
     - ['num_targets', 2]
-    NAME: CNN
-  DEVICE: cuda
   LOSS:
     KWARGS: []
     NAME: MAE
