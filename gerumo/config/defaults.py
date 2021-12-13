@@ -100,12 +100,12 @@ _C.OUTPUT.REGRESSION.TARGETS_DOMAINS = [
 # ----------------------------------------------------------------------------
 _C.SOLVER = CN()
 _C.SOLVER.BATCH_SIZE = 64
-_C.SOLVER.MAX_ITER = 200
+_C.SOLVER.EPOCHS = 200
 _C.SOLVER.BASE_LR = 0.001
 # Optimizer for Neural Networks
 _C.SOLVER.OPTIMIZER = CN()
-_C.SOLVER.OPTIMIZER.METHOD = "RMSprop"
-_C.SOLVER.OPTIMIZER.KWARGS = [
+_C.SOLVER.OPTIMIZER.CLASS_NAME = "RMSprop"
+_C.SOLVER.OPTIMIZER.CONFIG = [
     ('rho', 0.9),
     ('momentum', 0.0),
     ('epsilon', 1e-07),
@@ -120,8 +120,8 @@ _C.SOLVER.LR_EXPDECAY.STAIRCASE = True
 # Training Batch size
 # Models Loss
 _C.SOLVER.LOSS = CN()
-_C.SOLVER.LOSS.NAME = "MAE"
-_C.SOLVER.LOSS.KWARGS = []  # [(str, Any), ...]
+_C.SOLVER.LOSS.CLASS_NAME = "MeanAbsoluteError"  # Use loss class name
+_C.SOLVER.LOSS.CONFIG = []  # [(str, Any), ...]
 # ----------------------------------------------------------------------------
 # Callbacks for NN training
 # ----------------------------------------------------------------------------

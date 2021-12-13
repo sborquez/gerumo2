@@ -7,7 +7,7 @@ import logging
 from typing import List, Any
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import callbacks, metrics, optimizers
+from tensorflow.keras import callbacks, metrics, optimizers, losses
 from ..config.config import CfgNode, get_cfg
 from ..utils.structures import Task
 from ..data.dataset import load_dataset, aggregate_dataset
@@ -74,6 +74,19 @@ def setup_experiment(cfg: CfgNode) -> Path:
     return new_output_dir
 
 
+def setup_model(model, generator, optimizer, loss, metrics):
+    """Build models defining layers shapes and compile it."""
+    X = generator[0][0]
+    _ = model(X)
+    model.compile(
+        optimizer=optimizer,
+        loss=loss,
+        metrics=metrics
+    )
+    model.summary()
+    return model
+
+
 def overwrite_output_dir(cfg: CfgNode):
     """"Add custom output dir using configuratioCNn options"""
     cfg.defrost()
@@ -135,9 +148,11 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
             )
         )
     if cfg.CALLBACKS.MODELCHECKPOINT.ENABLE:
+        folder_path = Path(cfg.OUTPUT_DIR) / 'weights'
+        folder_path.mkdir()
         callbacks_.append(
             callbacks.ModelCheckpoint(
-                filepath=Path(cfg.OUTPUT_DIR) / 'weights' / 'model.{epoch:02d}-{val_loss:.2f}.h5',  # noqa
+                filepath=folder_path / 'model.{epoch:02d}-{val_loss:.2f}.h5',  # noqa
                 monitor=cfg.CALLBACKS.MODELCHECKPOINT.MONITOR,
                 verbose=1,
                 save_best_only=cfg.CALLBACKS.MODELCHECKPOINT.BEST_ONLY,
@@ -177,9 +192,19 @@ def build_optimizer(cfg: CfgNode) -> Any:
     else:
         lr_scheduler = cfg.SOLVER.BASE_LR
 
-    optimizer_ = optimizers.get(cfg.SOLVER.OPTIMIZER.METHOD)
-    optimizer_kwargs = {k: v for k, v in cfg.SOLVER.OPTIMIZER.KWARGS}
-    return optimizer_(
-        learning_rate=lr_scheduler,
-        **optimizer_kwargs
-    )
+    optimizer_config = {k: v for k, v in cfg.SOLVER.OPTIMIZER.CONFIG}
+    optimizer_config['learning_rate'] = lr_scheduler
+    optimizer_ = optimizers.get({
+        'class_name': cfg.SOLVER.OPTIMIZER.CLASS_NAME,
+        'config': optimizer_config
+    })
+    return optimizer_
+
+
+def build_loss(cfg: CfgNode) -> Any:
+    loss_config = {k: v for k, v in cfg.SOLVER.LOSS.CONFIG}
+    loss_ = losses.get({
+        'class_name': cfg.SOLVER.LOSS.CLASS_NAME,
+        'config': loss_config
+    })
+    return loss_

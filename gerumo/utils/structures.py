@@ -1,4 +1,3 @@
-from imp import init_builtin
 from pathlib import Path
 from itertools import repeat
 from enum import IntEnum, unique
@@ -23,12 +22,13 @@ class ReconstructionMode(IntEnum):
 
 
 class InputShape:
-    def __init__(self, images_shape, features_shape):
+    def __init__(self, images_shape, features_shape, batch_size=None):
         # self.images_shape = (None, 10, 10, 3)
         # self.features_shape = (None, 2)
+        self.batch_size = batch_size
         self.images_shape = images_shape
         self.features_shape = features_shape
-        self.num_inputs = (images_shape is not None) + (features_shape is not None)
+        self.num_inputs = (images_shape is not None) + (features_shape is not None)  # noqa
 
     def has_image(self):
         return self.images_shape is not None
@@ -36,8 +36,25 @@ class InputShape:
     def has_features(self):
         return self.features_shape is not None
 
+    def set_batch_size(self, batch_size):
+        self.batch_size = batch_size
+        if self.has_image():
+            self.images_shape = tuple([batch_size, *self.images_shape[1:]])
+        if self.has_features():
+            self.features_shape = tuple([batch_size, *self.features_shape[1:]])
+
     def __repr__(self) -> str:
-        return f"InputShape(images_shape={self.images_shape}, features_shape={self.features_shape})"
+        return f"InputShape(images_shape={self.images_shape}, features_shape={self.features_shape})"  # noqa
+
+    def get(self):
+        shape = []
+        if self.has_image():
+            img_shape = self.images_shape
+            shape.append(img_shape)
+        if self.has_features():
+            feat_shape = self.features_shape
+            shape.append(feat_shape)
+        return shape
 
 
 class Event:
@@ -185,7 +202,7 @@ class Observations:
         else:
             return desc + f", telescopes={self._availables_telescopes})"
 
-    def __getitem__(self, idx) -> Union[Tuple[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    def __getitem__(self, idx) -> Union[Tuple[np.ndarray], Tuple[np.ndarray, np.ndarray]]:  # noqa
         if self._channels_names:
             if self._features_names:
                 return (self.images[idx], self.features[idx])
@@ -220,12 +237,16 @@ class Observations:
                        telescopes: Optional[List['Telescope']] = None):
         # Return only one image an features
         if mode is ReconstructionMode.SINGLE:
-            obs_tensors = tuple(zip(*[obs.to_tensor() for obs in observations]))
+            obs_tensors = tuple(zip(*[obs.to_tensor() for obs in observations]))  # noqa
             if len(obs_tensors) == 1:
                 return np.stack(obs_tensors[0])
             return tuple(np.stack(obs_tensor) for obs_tensor in obs_tensors)
         else:
             raise NotImplementedError
+
+    @property
+    def shape(self) -> str:
+        return (8, 55, 47, 3)
 
     @property
     def event_unique_id(self) -> str:

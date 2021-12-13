@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 import logging
 import tensorflow as tf
 from fvcore.common.registry import Registry
@@ -46,6 +46,7 @@ class BaseModel(tf.keras.Model):
         self.telescopes = telescopes
         self.weights_path = weights
         self._input_shape = input_shape
+        self.enable_fit_mode = False
         self.architecture(**kwargs)
 
     @classmethod
@@ -55,13 +56,19 @@ class BaseModel(tf.keras.Model):
             'mode': ReconstructionMode[cfg.MODEL.RECONSTRUCTION_MODE],
             'task': Task[cfg.MODEL.TASK],
             'telescopes': [TELESCOPES[tel] for tel in cfg.MODEL.TELESCOPES],
-            'weights': cfg.MODEL.WEIGHTS,
+            'weights': cfg.MODEL.WEIGHTS
         }
         config.update({
                 k: v for k, v in cfg.MODEL.ARCHITECTURE.KWARGS
                 if k in cls._KWARGS
         })
         return config
+
+    def fit_mode(self):
+        self.enable_fit_mode = True
+
+    def verbose_mode(self):
+        self.enable_fit_mode = False
 
     def preprocess_input(self, inputs: List[Observations]):
         """Convert list of observations into keras model's input"""
@@ -70,14 +77,17 @@ class BaseModel(tf.keras.Model):
 
     def postprocess_output(self, outputs) -> List[Event]:
         """Convert keras model's output into list of Events."""
+        # TODO: Convert into a list of Events
         return outputs
 
-    def call(self, inputs: List[Observations], training: bool = False):
-        X = self.preprocess_input(inputs)
-        y = self.forward(X, training)
-        if training:
+    def call(self, inputs: Union[List[Observations], Any], training: bool = False):
+        if training or self.enable_fit_mode:
+            X = inputs
+            y = self.forward(X, training)
             return y
         else:
+            X = self.preprocess_input(inputs)
+            y = self.forward(X, training)
             return self.postprocess_output(y)
 
     @abstractmethod
