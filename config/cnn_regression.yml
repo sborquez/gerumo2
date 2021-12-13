@@ -20,11 +20,12 @@ MODEL:
     KWARGS:
     - ['hexconv', False]
     - ['num_targets', 2]
-  LOSS:
-    KWARGS: []
-    NAME: MAE
   RECONSTRUCTION_MODE: SINGLE
   TASK: REGRESSION
   TELESCOPES:
   - LST
   WEIGHTS: null
+OPTIMIZER:
+  LOSS:
+    KWARGS: []
+    NAME: MAE

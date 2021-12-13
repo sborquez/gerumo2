@@ -167,4 +167,19 @@ def build_metrics(cfg: CfgNode) -> List[metrics.Metric]:
 
 
 def build_optimizer(cfg: CfgNode) -> Any:
-    return None
+    if cfg.SOLVER.LR_EXPDECAY.ENABLE:
+        lr_scheduler = optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=cfg.SOLVER.BASE_LR,
+            decay_steps=cfg.SOLVER.LR_EXPDECAY.DECAY_STEPS,
+            decay_rate=cfg.SOLVER.LR_EXPDECAY.DECAY_RATE,
+            staircase=cfg.SOLVER.LR_EXPDECAY.STAIRCASE
+        )
+    else:
+        lr_scheduler = cfg.SOLVER.BASE_LR
+
+    optimizer_ = optimizers.get(cfg.SOLVER.OPTIMIZER.METHOD)
+    optimizer_kwargs = {k: v for k, v in cfg.SOLVER.OPTIMIZER.KWARGS}
+    return optimizer_(
+        learning_rate=lr_scheduler,
+        **optimizer_kwargs
+    )

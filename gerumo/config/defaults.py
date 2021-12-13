@@ -14,10 +14,6 @@ _C.MODEL.RECONSTRUCTION_MODE = ReconstructionMode.SINGLE.name
 _C.MODEL.TASK = Task.REGRESSION.name
 _C.MODEL.TELESCOPES = ["LST"]   # Telescope {type}_{camera_type}
 _C.MODEL.WEIGHTS = None  # Path  to a checkpoint file to be loaded to the model
-# Models Loss
-_C.MODEL.LOSS = CN()
-_C.MODEL.LOSS.NAME = "MAE"
-_C.MODEL.LOSS.KWARGS = []  # [(str, Any), ...]
 # Model Architecture
 _C.MODEL.ARCHITECTURE = CN()
 _C.MODEL.ARCHITECTURE.NAME = "CNN"
@@ -100,16 +96,32 @@ _C.OUTPUT.REGRESSION.TARGETS_DOMAINS = [
     (-0.25, 0.25)
 ]
 # ----------------------------------------------------------------------------
-# Solver for NN training
+# Solver for training
 # ----------------------------------------------------------------------------
 _C.SOLVER = CN()
-_C.SOLVER.NN = CN()
-_C.SOLVER.NN.BATCH_SIZE = 64
-_C.SOLVER.NN.MAX_ITER = 200
-_C.SOLVER.NN.METHOD = "Adam"
-_C.SOLVER.NN.BASE_LR = 0.001
-_C.SOLVER.NN.NESTEROV = False
-_C.SOLVER.NN.MOMENTUM = 0.9
+_C.SOLVER.BATCH_SIZE = 64
+_C.SOLVER.MAX_ITER = 200
+_C.SOLVER.BASE_LR = 0.001
+# Optimizer for Neural Networks
+_C.SOLVER.OPTIMIZER = CN()
+_C.SOLVER.OPTIMIZER.METHOD = "RMSprop"
+_C.SOLVER.OPTIMIZER.KWARGS = [
+    ('rho', 0.9),
+    ('momentum', 0.0),
+    ('epsilon', 1e-07),
+    ('centered', False)
+]
+# LR Scheduler Exponential Decay
+_C.SOLVER.LR_EXPDECAY = CN()
+_C.SOLVER.LR_EXPDECAY.ENABLE = True
+_C.SOLVER.LR_EXPDECAY.DECAY_STEPS = 100000
+_C.SOLVER.LR_EXPDECAY.DECAY_RATE = 0.96
+_C.SOLVER.LR_EXPDECAY.STAIRCASE = True
+# Training Batch size
+# Models Loss
+_C.SOLVER.LOSS = CN()
+_C.SOLVER.LOSS.NAME = "MAE"
+_C.SOLVER.LOSS.KWARGS = []  # [(str, Any), ...]
 # ----------------------------------------------------------------------------
 # Callbacks for NN training
 # ----------------------------------------------------------------------------
