@@ -18,6 +18,7 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+
 """
 Tables routes
 ============
@@ -384,7 +385,7 @@ def save_dataset(dataset, output_folder, prefix=None):
     return event_path, telescope_path
 
 
-def describe_dataset(dataset, save_to=None):
+def describe_dataset(dataset, logger=None, save_to=None):
     """Print a description of the dataset
 
     Args:
@@ -395,12 +396,18 @@ def describe_dataset(dataset, save_to=None):
     events = dataset.event_unique_id.nunique()
     obs = len(dataset)
     by_telescope = dataset.camera_type.value_counts()
-    print('files', files)
-    print('events', events)
-    print('observations', obs)
-    print('obsevation by telescopes')
-    print(by_telescope)
-
+    if logger is None:
+        print('files', files)
+        print('events', events)
+        print('observations', obs)
+        print('obsevation by telescopes')
+        print(by_telescope)
+    else:
+        logger.info(f'files: {files}')
+        logger.info(f'events: {events}')
+        logger.info(f'observations: {obs}')
+        logger.info('obsevation by telescopes')
+        logger.info(by_telescope)
     if save_to is not None:
         with open(save_to, 'w') as save_file:
             save_file.write(f'files: {files}\n')
