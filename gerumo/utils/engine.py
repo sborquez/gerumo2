@@ -4,9 +4,12 @@ import random
 from pathlib import Path
 from datetime import datetime
 import logging
+from typing import List, Any
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras import callbacks, metrics, optimizers
 from ..config.config import CfgNode, get_cfg
+from ..utils.structures import Task
 from ..data.dataset import load_dataset, aggregate_dataset
 
 
@@ -110,3 +113,58 @@ def build_dataset(cfg: CfgNode, subset: str):
     dataset = aggregate_dataset(dataset,
                                 az, log10_mc_energy, hdf5_file, remove_nan)
     return dataset
+
+
+def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
+    callbacks_ = []
+    # Early Stop
+    if cfg.CALLBACKS.EARLY_STOP.ENABLE:
+        callbacks_.append(
+            callbacks.EarlyStopping(
+                monitor=cfg.CALLBACKS.EARLY_STOP.MONITOR,
+                min_delta=cfg.CALLBACKS.EARLY_STOP.MIN_DELTA,
+                patience=cfg.CALLBACKS.EARLY_STOP.PATIENCE,
+                verbose=1,
+                restore_best_weights=cfg.CALLBACKS.EARLY_STOP.RESTORE_BEST_WEIGHTS  # noqa
+            )
+        )
+    if cfg.CALLBACKS.TENSORBOARD.ENABLE:
+        callbacks_.append(
+            callbacks.TensorBoard(
+                log_dir=Path(cfg.OUTPUT_DIR) / 'logs'
+            )
+        )
+    if cfg.CALLBACKS.MODELCHECKPOINT.ENABLE:
+        callbacks_.append(
+            callbacks.ModelCheckpoint(
+                filepath=Path(cfg.OUTPUT_DIR) / 'weights' / 'model.{epoch:02d}-{val_loss:.2f}.h5',  # noqa
+                monitor=cfg.CALLBACKS.MODELCHECKPOINT.MONITOR,
+                verbose=1,
+                save_best_only=cfg.CALLBACKS.MODELCHECKPOINT.BEST_ONLY,
+                save_weights_only=cfg.CALLBACKS.MODELCHECKPOINT.WEIGHTS_ONLY
+            )
+        )
+    if cfg.CALLBACKS.CSVLOGGER.ENABLE:
+        callbacks_.append(
+            callbacks.CSVLogger(
+                filename=Path(cfg.OUTPUT_DIR) / 'results.csv'
+            )
+        )
+    return callbacks_
+
+
+def build_metrics(cfg: CfgNode) -> List[metrics.Metric]:
+    metrics_ = []
+    if Task[cfg.MODEL.TASK] is Task.REGRESSION:
+        for metric in cfg.METRICS.REGRESSION:
+            metrics_.append(metric)
+    elif Task[cfg.MODEL.TASK] is Task.CLASSIFICATION:
+        for metric in cfg.METRICS.CLASSIFICATION:
+            if 'Metric' == 'PRC':
+                metric = metrics.AUC('prc', curve='PR')
+            metrics_.append(metric)
+    return metrics_
+
+
+def build_optimizer(cfg: CfgNode) -> Any:
+    return None

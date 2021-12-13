@@ -100,27 +100,68 @@ _C.OUTPUT.REGRESSION.TARGETS_DOMAINS = [
     (-0.25, 0.25)
 ]
 # ----------------------------------------------------------------------------
-# Solver for Mono training
+# Solver for NN training
 # ----------------------------------------------------------------------------
 _C.SOLVER = CN()
-_C.SOLVER.BATCH_SIZE = 64
-_C.SOLVER.MAX_ITER = 200
-_C.SOLVER.METHOD = "Adam"
-_C.SOLVER.BASE_LR = 0.001
-_C.SOLVER.NESTEROV = False
-_C.SOLVER.MOMENTUM = 0.9
+_C.SOLVER.NN = CN()
+_C.SOLVER.NN.BATCH_SIZE = 64
+_C.SOLVER.NN.MAX_ITER = 200
+_C.SOLVER.NN.METHOD = "Adam"
+_C.SOLVER.NN.BASE_LR = 0.001
+_C.SOLVER.NN.NESTEROV = False
+_C.SOLVER.NN.MOMENTUM = 0.9
 # ----------------------------------------------------------------------------
-# Callbacks
+# Callbacks for NN training
 # ----------------------------------------------------------------------------
 _C.CALLBACKS = CN()
-_C.CALLBACKS.EARLY_STOP_PATIENCE = 20
-_C.CALLBACKS.CHECKPOINTS_PERIOD = 10
+# Early Stop
+_C.CALLBACKS.EARLY_STOP = CN()
+_C.CALLBACKS.EARLY_STOP.ENABLE = True
+_C.CALLBACKS.EARLY_STOP.PATIENCE = 20
+_C.CALLBACKS.EARLY_STOP.MONITOR = 'val_loss'
+_C.CALLBACKS.EARLY_STOP.MIN_DELTA = 0
+_C.CALLBACKS.EARLY_STOP.RESTORE_BEST_WEIGHTS = False
+# Tensorboard
+_C.CALLBACKS.TENSORBOARD = CN()
+_C.CALLBACKS.TENSORBOARD.ENABLE = True
+# Model Checkpoint
+_C.CALLBACKS.MODELCHECKPOINT = CN()
+_C.CALLBACKS.MODELCHECKPOINT.ENABLE = True
+_C.CALLBACKS.MODELCHECKPOINT.MONITOR = 'val_loss'
+_C.CALLBACKS.MODELCHECKPOINT.BEST_ONLY = True
+_C.CALLBACKS.MODELCHECKPOINT.WEIGHTS_ONLY = True
+# CSVLog
+_C.CALLBACKS.CSVLOGGER = CN()
+_C.CALLBACKS.CSVLOGGER.ENABLE = True
 # ----------------------------------------------------------------------------
-# Monitor
+# Metrics for training
 # ----------------------------------------------------------------------------
-_C.MONITOR = CN()
-_C.MONITOR.SAVE_LOSS = True
-_C.MONITOR.VIS_PERIOD = 0
+_C.METRICS = CN()
+# Use class names from this: https://keras.io/api/metrics/
+_C.METRICS.CLASSIFICATION = [
+    'SparseCategoricalAccuracy',
+    'SparseCategoricalCrossentropy',
+    'AUC',
+    'PRC'
+    'Precision',
+    'Recall',
+    'TruePositives',
+    'TrueNegatives',
+    'FalsePositives',
+    'FalseNegatives',
+    'PrecisionAtRecall',
+    'SensitivityAtSpecificity',
+    'SpecificityAtSensitivity'
+]
+_C.METRICS.REGRESSION = [
+    'MeanSquaredError',
+    'RootMeanSquaredError',
+    'MeanAbsoluteError',
+    'MeanAbsolutePercentageError',
+    'MeanSquaredLogarithmicError',
+    'CosineSimilarity',
+    'LogCoshError'
+]
 # ----------------------------------------------------------------------------
 # Misc options
 # ----------------------------------------------------------------------------
@@ -133,3 +174,4 @@ _C.OUTPUT_DIR = "./output"
 # Disabling all parallelism further increases reproducibility.
 _C.SEED = -1
 _C.DETERMINISTIC = False
+_C.VERSION = 1

@@ -260,7 +260,7 @@ class SimpleCategorical(OutputClassificationMapper):
         super().__init__(target, num_classes, classes)
 
     def __call__(self, event_df: pd.DataFrame) -> Event:
-        """Convert event dataframe into Event structure for classification.
+        """Convert event dataframe into Event structure for (sparse) classification.
         Args:
             event_df (pd.Dataframe): Dataset of observations for an event.
                 If it is SINGLE reconstruction, `event_df` has length 1.

@@ -108,7 +108,7 @@ class Event:
         return self._fields
 
     def __repr__(self) -> str:
-        fields = ", ".join([f"{k}: {v}" for k, v in self._fields.items()])
+        fields = ", ".join([f"{k}: {v:.2f}" for k, v in self._fields.items()])
         return f"Event(id={self._event_unique_id}, energy={self._energy}, fields={fields})" # noqa
 
     def to_tensor(self, fields=None) -> np.ndarray:
@@ -179,7 +179,7 @@ class Observations:
 
     def __repr__(self) -> str:
         desc = f"Observations(id={self._event_unique_id}, "
-        desc += "mode={self._mode.name}"
+        desc += f"mode={self._mode.name}"
         if self._mode is ReconstructionMode.SINGLE:
             return desc + f", telescope={self._availables_telescopes[0]})"
         else:
