@@ -199,6 +199,7 @@ dependencies:
     - qtconsole==5.2.0
     - qtpy==1.11.2
     - scikit-learn==1.0.1
+    - seaborn
     - tables==3.6.1
     - tabulate==0.8.9
     - tensorflow-addons==0.15.0
