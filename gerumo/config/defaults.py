@@ -154,7 +154,7 @@ _C.METRICS.CLASSIFICATION = [
     'SparseCategoricalAccuracy',
     'SparseCategoricalCrossentropy',
     'AUC',
-    'PRC'
+    'PRC',
     'Precision',
     'Recall',
     'TruePositives',
