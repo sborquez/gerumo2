@@ -7,6 +7,7 @@ from gerumo.utils.engine import (
     build_dataset, build_callbacks, build_metrics, build_optimizer, build_loss
 )
 from gerumo.models.base import build_model
+from gerumo.visualization.metrics import training_history
 
 
 def main(args):
@@ -52,6 +53,10 @@ def main(args):
     )
     training_time = (time.time() - start_time)/60.0
     logger.info(f"Training time: {training_time:.3f} [min]")
+    training_history(history, training_time, cfg.EXPERIMENT_NAME,
+                     save_to=output_dir)
+    training_history(history, training_time, cfg.EXPERIMENT_NAME, ylog=True,
+                     save_to=output_dir)
     return history, model
 
 

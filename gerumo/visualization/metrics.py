@@ -18,7 +18,8 @@ Training Metrics
 """
 
 
-def training_history(history, training_time, model_name, ylog=False, save_to=None):
+def training_history(history, training_time, model_name,
+                     ylog=False, save_to=None):
     """
     Display training loss and validation loss vs epochs.
     """
@@ -44,7 +45,10 @@ def training_history(history, training_time, model_name, ylog=False, save_to=Non
 
     # Show or Save
     if save_to is not None:
-        fig.savefig(join(save_to, f'{model_name} - Training Loss.png'))
+        if ylog:
+            fig.savefig(join(save_to, f'{model_name} - Training Log Loss.png'))
+        else:
+            fig.savefig(join(save_to, f'{model_name} - Training Loss.png'))
         plt.close(fig)
     else:
         plt.show()
