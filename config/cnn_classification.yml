@@ -1,0 +1,41 @@
+EXPERIMENT_NAME: CNN LST Classification
+DATASETS:
+  TRAIN:
+    EVENTS: /home/ir-riqu1/Prod5_data/output_20/events
+    TELESCOPES: /home/ir-riqu1/Prod5_data/output_20/telescopes
+    FOLDER: null
+  VALIDATION:
+    EVENTS: /home/ir-riqu1/Prod5_data/output_20/events
+    TELESCOPES: /home/ir-riqu1/Prod5_data/output_20/telescopes
+    FOLDER: null
+  TEST:
+    EVENTS: null
+    TELESCOPES: null
+    FOLDER: null
+MODEL:
+  DEVICE: cuda
+  ARCHITECTURE:
+    NAME: CNN
+    KWARGS:
+    - ['hexconv', False]
+    - ['num_classes', 2]
+    - ['conv_kernel_sizes', [5, 3, 3, 3]]
+    - ['dense_layer_units', [128, 64]]
+  RECONSTRUCTION_MODE: SINGLE
+  TASK: CLASSIFICATION
+  TELESCOPES:
+  - LST
+  WEIGHTS: null
+SOLVER:
+  BATCH_SIZE: 8
+  LOSS:
+    CLASS_NAME: SparseCategoricalCrossentropy
+    CONFIG: []
+  OPTIMIZER:
+    CLASS_NAME: Adam
+    CONFIG:
+      - [amsgrad, True]
+OUTPUT:
+  MAPPER:
+    NAME: SimpleCategorical
+OUTPUT_DIR: /home/ir-riqu1/Prod5_data/gerumo2_test
