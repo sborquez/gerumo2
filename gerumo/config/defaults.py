@@ -53,6 +53,7 @@ _C.DATASETS.AGGREGATION.CENTER_AZ = True
 _C.DATASETS.AGGREGATION.LOG10_ENERGY = True
 _C.DATASETS.AGGREGATION.HDF5_FILEPATH = True
 _C.DATASETS.AGGREGATION.REMOVE_NAN = True
+_C.DATASETS.AGGREGATION.IGNORE_PARTICLE_TYPES = []
 # -----------------------------------------------------------------------------
 # Generator
 # -----------------------------------------------------------------------------

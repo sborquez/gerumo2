@@ -91,12 +91,12 @@ def overwrite_output_dir(cfg: CfgNode):
     """"Add custom output dir using configuratioCNn options"""
     cfg.defrost()
     model_folder = f'freeze_at_{str(cfg.MODEL.BACKBONE.FREEZE_AT)}_'
-    model_folder += f'resize_{cfg.INPUT.MAX_SIZE_TRAIN}_{cfg.INPUT.MIN_SIZE_TRAIN[0]}'
+    model_folder += f'resize_{cfg.INPUT.MAX_SIZE_TRAIN}_{cfg.INPUT.MIN_SIZE_TRAIN[0]}'  # noqa
     model_folder += f'_anchors_{len(cfg.MODEL.ANCHOR_GENERATOR.SIZES[0])}'
-    model_folder += f'_aspect_ratios_{len(cfg.MODEL.ANCHOR_GENERATOR.ASPECT_RATIOS[0])}'
+    model_folder += f'_aspect_ratios_{len(cfg.MODEL.ANCHOR_GENERATOR.ASPECT_RATIOS[0])}'  # noqa
     model_folder += f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
     backbone = '_'.join(cfg.MODEL.BACKBONE.NAME.split('_')[1:-1])
-    output_dir = Path(cfg.OUTPUT_DIR).absolute() / backbone.lower() / model_folder
+    output_dir = Path(cfg.OUTPUT_DIR).absolute() / backbone.lower() / model_folder  # noqa
     cfg.OUTPUT_DIR = str(output_dir)
     cfg.freeze()
 
@@ -123,8 +123,9 @@ def build_dataset(cfg: CfgNode, subset: str):
     log10_mc_energy = cfg.DATASETS.AGGREGATION.LOG10_ENERGY
     hdf5_file = cfg.DATASETS.AGGREGATION.HDF5_FILEPATH
     remove_nan = cfg.DATASETS.AGGREGATION.REMOVE_NAN
-    dataset = aggregate_dataset(dataset,
-                                az, log10_mc_energy, hdf5_file, remove_nan)
+    ignore_particle_types = cfg.DATASETS.AGGREGATION.IGNORE_PARTICLE_TYPES
+    dataset = aggregate_dataset(dataset, az, log10_mc_energy, hdf5_file,
+                                remove_nan, ignore_particle_types)
     return dataset
 
 

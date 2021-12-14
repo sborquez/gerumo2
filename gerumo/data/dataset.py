@@ -417,8 +417,8 @@ def describe_dataset(dataset, logger=None, save_to=None):
             save_file.write(by_telescope.to_string())
 
 
-def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
-                      hdf5_file=True, remove_nan=True):
+def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True,
+                      remove_nan=True, ignore_particle_types=[]):
     """Perform simple aggegation to targe columns.
 
     Args:
@@ -428,7 +428,8 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
         log10_mc_energy (bool, optional): Add new log10_mc_energy column,
             with the logarithm values of mc_energy. Defaults to True.
         hdf5_file (bool, optional): Replace source folder. Defaults to True.
-
+        ignore_particle_types (list[str], optional): Ignore samples with a 
+            particle type from the list.
     Returns:
         pd.DataFrame: Dataset with aggregate information.
     """
@@ -447,4 +448,6 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True,
             )
     if remove_nan:
         dataset.dropna(inplace=True)
+    if ignore_particle_types:
+        dataset = dataset[~dataset.particle_type.isin(ignore_particle_types)]
     return dataset
