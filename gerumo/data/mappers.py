@@ -246,9 +246,9 @@ class OutputClassificationMapper(OutputMapper):
     @classmethod
     def from_config(cls, cfg):
         return {
-            "target": cfg.INPUT.target,
-            "num_classes": cfg.INPUT.NUM_CLASSES,
-            "classes": cfg.INPUT.CLASSES
+            "target": cfg.OUTPUT.CLASSIFICATION.TARGET,
+            "num_classes": cfg.OUTPUT.CLASSIFICATION.NUM_CLASSES,
+            "classes": cfg.OUTPUT.CLASSIFICATION.CLASSES
         }
 
 
