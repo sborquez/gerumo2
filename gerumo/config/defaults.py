@@ -86,7 +86,7 @@ _C.OUTPUT.MAPPER.NAME = "SimpleRegression"
 _C.OUTPUT.CLASSIFICATION = CN()
 _C.OUTPUT.CLASSIFICATION.TARGET = "particle_type"
 _C.OUTPUT.CLASSIFICATION.NUM_CLASSES = 2
-_C.OUTPUT.CLASSIFICATION.CLASSES = ["gamma", "protron"]
+_C.OUTPUT.CLASSIFICATION.CLASSES = ["gamma", "proton"]
 # -----------------------------------------------------------------------------
 # Regression task
 # -----------------------------------------------------------------------------

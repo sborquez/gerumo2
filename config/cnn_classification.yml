@@ -1,17 +1,19 @@
 EXPERIMENT_NAME: CNN LST Classification
 DATASETS:
   TRAIN:
-    EVENTS: /home/ir-riqu1/Prod5_data/output_20/events
-    TELESCOPES: /home/ir-riqu1/Prod5_data/output_20/telescopes
+    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL/events
+    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL/telescopes
     FOLDER: null
   VALIDATION:
-    EVENTS: /home/ir-riqu1/Prod5_data/output_20/events
-    TELESCOPES: /home/ir-riqu1/Prod5_data/output_20/telescopes
+    EVENTS: /home/ir-riqu1/Prod5_data/output_TEST/events
+    TELESCOPES: /home/ir-riqu1/Prod5_data/output_TEST/telescopes
     FOLDER: null
   TEST:
     EVENTS: null
     TELESCOPES: null
     FOLDER: null
+  AGGREGATION:
+    IGNORE_PARTICLE_TYPES: ['electron']
 MODEL:
   DEVICE: cuda
   ARCHITECTURE:
@@ -27,7 +29,7 @@ MODEL:
   - LST
   WEIGHTS: null
 SOLVER:
-  BATCH_SIZE: 8
+  BATCH_SIZE: 64
   LOSS:
     CLASS_NAME: SparseCategoricalCrossentropy
     CONFIG: []
@@ -35,7 +37,10 @@ SOLVER:
     CLASS_NAME: Adam
     CONFIG:
       - [amsgrad, True]
+  EPOCHS: 10
 OUTPUT:
   MAPPER:
-    NAME: SimpleCategorical
+    NAME: OnevsAllClassification
 OUTPUT_DIR: /home/ir-riqu1/Prod5_data/gerumo2_test
+METRICS:
+  CLASSIFICATION: ['SparseCategoricalAccuracy']
