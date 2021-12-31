@@ -1,0 +1,32 @@
+name: tf23
+channels:
+  - cta-observatory
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - tensorflow-gpu=2.6.0
+  - tensorflow-probability=0.14.0
+  - scikit-learn
+  - numpy
+  - astropy
+  - h5py
+  - pandas
+  - xlrd
+  - matplotlib
+  - seaborn
+  - scipy
+  - jupyter
+  - scikit-image
+  - pytables
+  - pyarrow
+  - tqdm
+  - conda-forge::pot 
+  - pip:
+    - fvcore
+    - tensorflow_addons==0.15.0
+    - ctaplot
+    - pytest
+    - pydot==1.4.1
+    - omegaconf

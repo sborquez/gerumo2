@@ -19,7 +19,7 @@ if __name__ == "__main__":
     events_folder = path.join(args.dataset, "events")
     telescopes_folder = path.join(args.dataset, "telescopes")
     dataset = load_dataset(events_folder, telescopes_folder)
-    train_dataset, val_dataset = split_dataset(dataset, args.split)
+    train_dataset, val_dataset = split_dataset(dataset, args.split, balanced_files=False) #AGREGUE EL BALANCED_FILES=FALSE
     makedirs(args.output,  exist_ok=True)
     save_dataset(train_dataset, args.output, "train")
     save_dataset(val_dataset, args.output, "validation")

@@ -1,28 +1,28 @@
 EXPERIMENT_NAME: CNN LST Classification
 DATASETS:
   TRAIN:
-    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL/events
-    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL/telescopes
+    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/events
+    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/telescopes
     FOLDER: null
   VALIDATION:
-    EVENTS: /home/ir-riqu1/Prod5_data/output_TEST/events
-    TELESCOPES: /home/ir-riqu1/Prod5_data/output_TEST/telescopes
+    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/events
+    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/telescopes
     FOLDER: null
   TEST:
     EVENTS: null
     TELESCOPES: null
     FOLDER: null
   AGGREGATION:
-    IGNORE_PARTICLE_TYPES: ['electron']
+    IGNORE_PARTICLE_TYPES: [ electron ]
 MODEL:
   DEVICE: cuda
   ARCHITECTURE:
     NAME: CNN
     KWARGS:
-    - ['hexconv', False]
-    - ['num_classes', 2]
-    - ['conv_kernel_sizes', [5, 3, 3, 3]]
-    - ['dense_layer_units', [128, 64]]
+    - [hexconv, False]
+    - [num_classes, 2]
+    - [conv_kernel_sizes, [5, 3, 3, 3]]
+    - [dense_layer_units, [128, 64]]
   RECONSTRUCTION_MODE: SINGLE
   TASK: CLASSIFICATION
   TELESCOPES:
@@ -43,4 +43,4 @@ OUTPUT:
     NAME: OnevsAllClassification
 OUTPUT_DIR: /home/ir-riqu1/Prod5_data/gerumo2_test
 METRICS:
-  CLASSIFICATION: ['SparseCategoricalAccuracy']
+  CLASSIFICATION: [ SparseCategoricalAccuracy ]

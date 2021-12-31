@@ -1,0 +1,44 @@
+EXPERIMENT_NAME: Random Forest SST Classification 20
+DATASETS:
+  TRAIN:
+    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny_splitted/train_events.parquet
+    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny_splitted/train_telescopes.parquet
+    FOLDER: null
+  VALIDATION:
+    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny_splitted/validation_events.parquet
+    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny_splitted/validation_telescopes.parquet
+    FOLDER: null
+  TEST:
+    EVENTS: null
+    TELESCOPES: null
+    FOLDER: null
+  AGGREGATION:
+    IGNORE_PARTICLE_TYPES: null
+MODEL:
+  TELESCOPES: 
+  - SST
+SOLVER:
+  BATCH_SIZE: 256
+INPUT:
+  MAPPER:
+    NAME: SimpleSquareImage
+  IMAGE_CHANNELS: []
+  TELESCOPE_FEATURES: 
+  - hillas_intensity
+  - hillas_x
+  - hillas_y
+  - hillas_r
+  - hillas_phi
+  - hillas_length
+  - hillas_length_uncertainty
+  - hillas_width
+  - hillas_width_uncertainty
+  - hillas_psi
+  - hillas_skewness
+  - hillas_kurtosis
+OUTPUT:
+  MAPPER:
+    NAME: OnevsAllClassification
+OUTPUT_DIR: /home/ir-riqu1/Prod5_data/gerumo2_RF
+METRICS:
+  CLASSIFICATION: [ SparseCategoricalAccuracy ]
