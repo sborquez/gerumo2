@@ -82,6 +82,55 @@ class ImageNormalizer(layers.Layer):
         return config
 
 
+class ImageNormalizer(layers.Layer):
+    # Asume que la imagen siempre tiene 3 canales ordenados
+    def __init__(self, img_shape, normalize_charge=False, time_peak_max=None, apply_mask=False, **kargs):
+        super(ImageNormalizer, self).__init__(**kargs)
+        self.img_shape = img_shape
+        self.normalize_charge = normalize_charge
+        self.time_peak_max = time_peak_max
+        self.apply_mask = apply_mask
+        self.charge_split = layers.Lambda(lambda x: tf.reshape(x[:, :, :, 0],(img_shape[0],img_shape[1]*img_shape[2])))
+        self.time_peak_split = layers.Lambda(lambda x: tf.expand_dims(x[:, :, :, 1], axis = -1))
+        self.mask_split = layers.Lambda(lambda x: tf.expand_dims(x[:, :, :, 2], axis = -1))
+        self.concatenate = layers.Concatenate(axis=-1)
+        if self.normalize_charge:     
+            self.charge_normalization = layers.LayerNormalization(axis=-1)
+        if self.time_peak_max is not None:
+            self.time_peak_normalization = layers.Lambda(lambda x: x/self.time_peak_max)
+        if self.apply_mask:
+            self.masking = layers.Lambda(lambda x: x[0]*x[1])
+        else:
+            self.concatenate_mask = layers.Concatenate(axis=-1)
+
+    def call(self, inputs):
+        charge = self.charge_split(inputs)
+        time = self.time_peak_split(inputs)
+        mask = self.mask_split(inputs)
+        if self.normalize_charge:
+            charge = self.charge_normalization(charge)
+        charge = tf.reshape(charge,(self.img_shape[0],self.img_shape[1],self.img_shape[2],1))
+        if self.time_peak_max is not None:
+            time = self.time_peak_normalization(time)
+        output = self.concatenate([charge, time]) 
+        if self.apply_mask:
+            output = self.masking((output, mask))
+        else:
+            output = self.concatenate_mask([output, mask])
+
+        return output
+    
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'img_shape': self.img_shape,
+            'normalize_charge': self.normalize_charge,
+            'time_peak_max': self.time_peak_max,
+            'apply_mask': self.apply_mask            
+        })
+        return config
+
+
 class HexConvLayer(layers.Layer):
     def __init__(self, filters, kernel_size=(3, 3), name=None, reshape=None,
                  **kargs):

@@ -1,11 +1,13 @@
 from abc import abstractmethod
 from typing import Any, List, Optional, Union
 import logging
+from pathlib import Path
 
 import tensorflow as tf
 import sklearn
 from fvcore.common.registry import Registry
 
+from gerumo.data.generators import BaseGenerator
 from gerumo.data.constants import TELESCOPES
 from ..config.config import configurable
 from ..utils.structures import (
@@ -71,6 +73,7 @@ class LoadableModel:
         if self._model is None:
             x = [tf.keras.Input(shape=s_i[1:]) for s_i in self._input_shape.get()]
             x = x[0] if len(x) == 1 else x
+            # TODO: check list [x] vs x
             self._model = tf.keras.Model(inputs=[x], outputs=self.call(x))
         return self._model
 
@@ -254,3 +257,21 @@ def build_ensembler(cfg) -> 'BaseEnsembler':
 
 class BaseEnsembler:
     pass
+
+
+def load_model(model: BaseModel, generator: BaseGenerator, output_dir: Union[Path, str], epoch_idx: int = -1):
+    """Load model's weights from a checkpoint at given epoch."""
+    checkpoints = sorted(list(Path(output_dir).glob('weights/*.h5')))
+    if len(checkpoints) == 0:
+        raise ValueError('Model doesn`t have checkpoints')
+    if epoch_idx >= 0 and len(checkpoints) <= epoch_idx:
+        raise ValueError(f'Epoch_idx should be in [0, {len(checkpoints)}) or -1: {epoch_idx}')
+    checkpoint = checkpoints[epoch_idx]
+    X = generator[0][0]
+    _ = model(X)
+    try:
+        model.load_weights(checkpoint)
+    except ValueError:
+        model._get_model()
+        model.load_weights(checkpoint)
+    return model
