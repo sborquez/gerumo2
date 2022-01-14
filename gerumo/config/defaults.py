@@ -12,12 +12,8 @@ _C.MODEL = CN()
 _C.MODEL.DEVICE = "cuda"
 _C.MODEL.RECONSTRUCTION_MODE = ReconstructionMode.SINGLE.name
 _C.MODEL.TASK = Task.REGRESSION.name
-_C.MODEL.TELESCOPES = ["LST"]   # Telescope {type}_{camera_type}
+_C.MODEL.TELESCOPES = ["LST"]   # Telescope type LST|MST|SST
 _C.MODEL.WEIGHTS = None  # Path  to a checkpoint file to be loaded to the model
-# Models Loss
-_C.MODEL.LOSS = CN()
-_C.MODEL.LOSS.NAME = "MAE"
-_C.MODEL.LOSS.KWARGS = []  # [(str, Any), ...]
 # Model Architecture
 _C.MODEL.ARCHITECTURE = CN()
 _C.MODEL.ARCHITECTURE.NAME = "CNN"
@@ -56,6 +52,8 @@ _C.DATASETS.AGGREGATION = CN()
 _C.DATASETS.AGGREGATION.CENTER_AZ = True
 _C.DATASETS.AGGREGATION.LOG10_ENERGY = True
 _C.DATASETS.AGGREGATION.HDF5_FILEPATH = True
+_C.DATASETS.AGGREGATION.REMOVE_NAN = True
+_C.DATASETS.AGGREGATION.IGNORE_PARTICLE_TYPES = []
 # -----------------------------------------------------------------------------
 # Generator
 # -----------------------------------------------------------------------------
@@ -74,7 +72,7 @@ _C.INPUT = CN()
 _C.INPUT.MAPPER = CN()
 _C.INPUT.MAPPER.NAME = "SimpleSquareImage"
 _C.INPUT.MAPPER.KWARGS = []  # [(str, Any), ...]
-_C.INPUT.IMAGE_CHANNELS = ["charge", "time_peaks", "mask"]
+_C.INPUT.IMAGE_CHANNELS = ["image", "peak_time", "image_mask"]
 _C.INPUT.TELESCOPE_FEATURES = []
 # -----------------------------------------------------------------------------
 # Output
@@ -88,7 +86,7 @@ _C.OUTPUT.MAPPER.NAME = "SimpleRegression"
 _C.OUTPUT.CLASSIFICATION = CN()
 _C.OUTPUT.CLASSIFICATION.TARGET = "particle_type"
 _C.OUTPUT.CLASSIFICATION.NUM_CLASSES = 2
-_C.OUTPUT.CLASSIFICATION.CLASSES = ["gamma", "protron"]
+_C.OUTPUT.CLASSIFICATION.CLASSES = ["gamma", "proton"]
 # -----------------------------------------------------------------------------
 # Regression task
 # -----------------------------------------------------------------------------
@@ -99,27 +97,84 @@ _C.OUTPUT.REGRESSION.TARGETS_DOMAINS = [
     (-0.25, 0.25)
 ]
 # ----------------------------------------------------------------------------
-# Solver for Mono training
+# Solver for training
 # ----------------------------------------------------------------------------
 _C.SOLVER = CN()
 _C.SOLVER.BATCH_SIZE = 64
-_C.SOLVER.MAX_ITER = 200
-_C.SOLVER.METHOD = "Adam"
+_C.SOLVER.EPOCHS = 200
 _C.SOLVER.BASE_LR = 0.001
-_C.SOLVER.NESTEROV = False
-_C.SOLVER.MOMENTUM = 0.9
+# Optimizer for Neural Networks
+_C.SOLVER.OPTIMIZER = CN()
+_C.SOLVER.OPTIMIZER.CLASS_NAME = "RMSprop"
+_C.SOLVER.OPTIMIZER.CONFIG = [
+    ('rho', 0.9),
+    ('momentum', 0.0),
+    ('epsilon', 1e-07),
+    ('centered', False)
+]
+# LR Scheduler Exponential Decay
+_C.SOLVER.LR_EXPDECAY = CN()
+_C.SOLVER.LR_EXPDECAY.ENABLE = True
+_C.SOLVER.LR_EXPDECAY.DECAY_STEPS = 100000
+_C.SOLVER.LR_EXPDECAY.DECAY_RATE = 0.96
+_C.SOLVER.LR_EXPDECAY.STAIRCASE = True
+# Training Batch size
+# Models Loss
+_C.SOLVER.LOSS = CN()
+_C.SOLVER.LOSS.CLASS_NAME = "MeanAbsoluteError"  # Use loss class name
+_C.SOLVER.LOSS.CONFIG = []  # [(str, Any), ...]
 # ----------------------------------------------------------------------------
-# Callbacks
+# Callbacks for NN training
 # ----------------------------------------------------------------------------
 _C.CALLBACKS = CN()
-_C.CALLBACKS.EARLY_STOP_PATIENCE = 20
-_C.CALLBACKS.CHECKPOINTS_PERIOD = 10
+# Early Stop
+_C.CALLBACKS.EARLY_STOP = CN()
+_C.CALLBACKS.EARLY_STOP.ENABLE = True
+_C.CALLBACKS.EARLY_STOP.PATIENCE = 20
+_C.CALLBACKS.EARLY_STOP.MONITOR = 'val_loss'
+_C.CALLBACKS.EARLY_STOP.MIN_DELTA = 0
+_C.CALLBACKS.EARLY_STOP.RESTORE_BEST_WEIGHTS = False
+# Tensorboard
+_C.CALLBACKS.TENSORBOARD = CN()
+_C.CALLBACKS.TENSORBOARD.ENABLE = True
+# Model Checkpoint
+_C.CALLBACKS.MODELCHECKPOINT = CN()
+_C.CALLBACKS.MODELCHECKPOINT.ENABLE = True
+_C.CALLBACKS.MODELCHECKPOINT.MONITOR = 'val_loss'
+_C.CALLBACKS.MODELCHECKPOINT.BEST_ONLY = True
+_C.CALLBACKS.MODELCHECKPOINT.WEIGHTS_ONLY = True
+# CSVLog
+_C.CALLBACKS.CSVLOGGER = CN()
+_C.CALLBACKS.CSVLOGGER.ENABLE = True
 # ----------------------------------------------------------------------------
-# Monitor
+# Metrics for training
 # ----------------------------------------------------------------------------
-_C.MONITOR = CN()
-_C.MONITOR.SAVE_LOSS = True
-_C.MONITOR.VIS_PERIOD = 0
+_C.METRICS = CN()
+# Use class names from this: https://keras.io/api/metrics/
+_C.METRICS.CLASSIFICATION = [
+    'SparseCategoricalAccuracy',
+    'SparseCategoricalCrossentropy',
+    'AUC',
+    'PRC',
+    'Precision',
+    'Recall',
+    'TruePositives',
+    'TrueNegatives',
+    'FalsePositives',
+    'FalseNegatives',
+    'PrecisionAtRecall',
+    'SensitivityAtSpecificity',
+    'SpecificityAtSensitivity'
+]
+_C.METRICS.REGRESSION = [
+    'MeanSquaredError',
+    'RootMeanSquaredError',
+    'MeanAbsoluteError',
+    'MeanAbsolutePercentageError',
+    'MeanSquaredLogarithmicError',
+    'CosineSimilarity',
+    'LogCoshError'
+]
 # ----------------------------------------------------------------------------
 # Misc options
 # ----------------------------------------------------------------------------
@@ -131,3 +186,5 @@ _C.OUTPUT_DIR = "./output"
 # reproducibility but does not guarantee fully deterministic behavior.
 # Disabling all parallelism further increases reproducibility.
 _C.SEED = -1
+_C.DETERMINISTIC = False
+_C.VERSION = 1

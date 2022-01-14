@@ -1,5 +1,6 @@
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
+
 from .base import BaseModel, MODEL_REGISTRY
 from .layers import HexConvLayer, ConvBlock
 from ..utils.structures import Task
@@ -27,12 +28,16 @@ class CNN(BaseModel):
         self._input = []
         self._input_img = layers.InputLayer(
             name="images",
-            input_shape=self._input_shape.images_shape[1:])
+            input_shape=self._input_shape.images_shape[1:],
+            batch_size=self._input_shape.batch_size
+        )
         self._input.append(self._input_img)
         if self._input_shape.has_features():
             self._input_features = layers.InputLayer(
                 name="features",
-                input_shape=self._input_shape.features_shape[1:])
+                input_shape=self._input_shape.features_shape[1:],
+                batch_size=self._input_shape.batch_size
+            )
             self._input.append(self._input_features)
         # Image Branch
         if hexconv:

@@ -16,7 +16,9 @@ from typing import Any, List, Tuple, Union
 
 from gerumo.data.constants import TELESCOPES
 from ..config.config import configurable
-from ..utils.structures import Event, InputShape, Observations, Telescope
+from ..utils.structures import (
+    Event, InputShape, Observations, ReconstructionMode, Telescope
+)
 from ..data.mappers import (
     InputMapper, OutputMapper, build_input_mapper, build_output_mapper
 )
@@ -61,10 +63,18 @@ class BaseGenerator(tf.keras.utils.Sequence):
         self.input_mapper = input_mapper
         # How to generate output
         self.output_mapper = output_mapper
+        # Enable keras generator mode
+        self.enable_fit_mode = False
 
     def __len__(self) -> int:
         'Denotes the number of batches per epoch'
         return self.length
+
+    def fit_mode(self):
+        self.enable_fit_mode = True
+
+    def verbose_mode(self):
+        self.enable_fit_mode = False
 
     def __getitem__(self,
                     index: int
@@ -74,7 +84,13 @@ class BaseGenerator(tf.keras.utils.Sequence):
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
         # Generate data
         observations, events = self._data_generation(indexes)
+        if self.enable_fit_mode:
+            return self.to_tensors(observations, events)
         return observations, events
+
+    @abstractmethod
+    def to_tensors(self, observations, events):
+        raise NotImplementedError
 
     @abstractmethod
     def get_input_shape(self) -> Union[InputShape, Any]:
@@ -126,6 +142,13 @@ class MonoGenerator(BaseGenerator):
             "strict_shuffle": cfg.GENERATOR.USE_STRICT_SHUFFLE,
         }
 
+    def to_tensors(self, observations, events):
+        observations = Observations.list_to_tensor(
+            ReconstructionMode.SINGLE, observations
+        )
+        events = Event.list_to_tensor(events)
+        return observations, events
+
     def get_input_shape(self) -> Union[InputShape, Any]:
         obs_tensors = self[0][0][0].to_tensor()
         images_shape, features_shape = None, None
@@ -133,7 +156,9 @@ class MonoGenerator(BaseGenerator):
             images_shape = (None, *(obs_tensors[0].shape))
         if self.input_mapper.telescope_features:
             features_shape = (None, *(obs_tensors[1].shape))
-        return InputShape(images_shape, features_shape)
+        input_shape = InputShape(images_shape, features_shape)
+        input_shape.set_batch_size(self.batch_size)
+        return input_shape
 
     def on_epoch_end(self) -> np.ndarray:
         'Updates indexes after each epoch'
