@@ -1,3 +1,4 @@
+from imp import init_builtin
 from pathlib import Path
 from itertools import repeat
 from enum import IntEnum, unique
@@ -19,6 +20,24 @@ class Task(IntEnum):
 class ReconstructionMode(IntEnum):
     SINGLE = 0  # or Mono
     STEREO = 1
+
+
+class InputShape:
+    def __init__(self, images_shape, features_shape):
+        # self.images_shape = (None, 10, 10, 3)
+        # self.features_shape = (None, 2)
+        self.images_shape = images_shape
+        self.features_shape = features_shape
+        self.num_inputs = (images_shape is not None) + (features_shape is not None)
+
+    def has_image(self):
+        return self.images_shape is not None
+
+    def has_features(self):
+        return self.features_shape is not None
+
+    def __repr__(self) -> str:
+        return f"InputShape(images_shape={self.images_shape}, features_shape={self.features_shape})"
 
 
 class Event:
@@ -135,6 +154,8 @@ class Observations:
     For Mono reconstruction it contains a list of length 1.
     For Stereo and Multi-Stereo reconstruction, inputs are grouped
     by the telescope type.
+
+    When transforming into a tensor, it will always return an Tuple
     """
     def __init__(self, event_unique_id: str, mode: ReconstructionMode,
                  telescopes: List['Telescope'],
@@ -157,17 +178,27 @@ class Observations:
         self.features = features or list(repeat(None, len(telescopes)))
 
     def __repr__(self) -> str:
-        desc = f"Observations(id={self._event_unique_id}, mode={self._mode.name}"
+        desc = f"Observations(id={self._event_unique_id}, "
+        desc += "mode={self._mode.name}"
         if self._mode is ReconstructionMode.SINGLE:
             return desc + f", telescope={self._availables_telescopes[0]})"
         else:
             return desc + f", telescopes={self._availables_telescopes})"
 
+    def __getitem__(self, idx) -> Union[Tuple[np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        if self._channels_names:
+            if self._features_names:
+                return (self.images[idx], self.features[idx])
+            else:
+                return self.images[idx],
+        else:
+            return self.features[idx],
+
     def to_tensor(self, telescopes: Optional[List['Telescope']] = None
                   ) -> Union[Tuple[np.ndarray, np.ndarray], Dict[str, List[Tuple[np.ndarray, np.ndarray]]]]:  # noqa
         # Return only one image an features
         if self._mode is ReconstructionMode.SINGLE:
-            return tuple(self.images[0], self.features[0])
+            return self[0]
         # Return each image and feature grouped by telescope type
         elif self._mode is ReconstructionMode.STEREO:
             # Select which telecopes return, default is all avaiables.
@@ -179,10 +210,22 @@ class Observations:
             obs_by_telescope = {}
             for telescope_type in telescopes_types:
                 obs_by_telescope[telescope_type] = [
-                    tuple(self.images[idx], self.features[idx])
+                    self[idx]
                     for idx in self._obs_by_telescopes[telescope_type]
                 ]
             return obs_by_telescope
+
+    @classmethod
+    def list_to_tensor(cls, mode, observations: List['Observations'],
+                       telescopes: Optional[List['Telescope']] = None):
+        # Return only one image an features
+        if mode is ReconstructionMode.SINGLE:
+            obs_tensors = tuple(zip(*[obs.to_tensor() for obs in observations]))
+            if len(obs_tensors) == 1:
+                return np.stack(obs_tensors[0])
+            return tuple(np.stack(obs_tensor) for obs_tensor in obs_tensors)
+        else:
+            raise NotImplementedError
 
     @property
     def event_unique_id(self) -> str:

@@ -55,6 +55,7 @@ class CfgNode(_CfgNode):
 
         # defaults.py needs to import CfgNode
         from .defaults import _C # noqa
+        self.merge_from_other_cfg(loaded_cfg)
 
     def dump(self, *args, **kwargs):
         """
