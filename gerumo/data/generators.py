@@ -152,10 +152,14 @@ class MonoGenerator(BaseGenerator):
     def get_input_shape(self) -> Union[InputShape, Any]:
         obs_tensors = self[0][0][0].to_tensor()
         images_shape, features_shape = None, None
+        # it has image
         if self.input_mapper.image_channels:
+            # image is always the first input
             images_shape = (None, *(obs_tensors[0].shape))
+        # it has features
         if self.input_mapper.telescope_features:
-            features_shape = (None, *(obs_tensors[1].shape))
+            # image is always the last input
+            features_shape = (None, *(obs_tensors[-1].shape))
         input_shape = InputShape(images_shape, features_shape)
         input_shape.set_batch_size(self.batch_size)
         return input_shape
@@ -170,10 +174,6 @@ class MonoGenerator(BaseGenerator):
                 np.random.shuffle(self.indexes)
         return self.indexes
 
-    def _filter_telescope_dataset(self, dataset):
-        self.src_dataset = dataset
-        self.dataset = dataset[dataset[""]]
-
     def _data_generation(self,
                          list_indexes: np.ndarray
                          ) -> Tuple[List[Observations], List[Event]]:
@@ -187,6 +187,42 @@ class MonoGenerator(BaseGenerator):
             batch_events.append(event)
             batch_observations.append(observations)
         return (batch_observations, batch_events)
+
+
+@GENERATOR_REGISTRY.register()
+class OneBatchMonoGenerator(MonoGenerator):
+
+    @configurable
+    def __init__(self,
+                 dataset: pd.DataFrame,
+                 telescope: Telescope,
+                 input_mapper: InputMapper,
+                 output_mapper: OutputMapper,
+                 shuffle: bool = True,
+                 strict_shuffle: bool = False) -> None:
+        mask = np.logical_and.reduce(
+            dataset[["name", "type", "camera_type"]] == telescope.description,
+            axis=1)
+        dataset = dataset[mask]
+        batch_size = len(dataset)
+        super().__init__(
+            dataset, telescope, batch_size, input_mapper, output_mapper,
+            shuffle, strict_shuffle
+        )
+
+    @classmethod
+    def from_config(cls, cfg, dataset):
+        return {
+            "dataset": dataset,
+            "telescope": TELESCOPES[cfg.MODEL.TELESCOPES[0]],
+            "input_mapper": build_input_mapper(cfg),
+            "output_mapper": build_output_mapper(cfg),
+            "shuffle": cfg.GENERATOR.ENABLE_SHUFFLE,
+            "strict_shuffle": cfg.GENERATOR.USE_STRICT_SHUFFLE,
+        }
+
+    def get_batch(self):
+        return self[0]
 
 
 # @GENERATOR_REGISTRY.register()

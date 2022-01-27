@@ -1,14 +1,10 @@
-EXPERIMENT_NAME: Random Forest LST Classification ALL
+EXPERIMENT_NAME: Random Forest LST REGRESSION
 DATASETS:
   TRAIN:
-    #EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL_splitted/train_events.parquet
     EVENTS: /home/asuka/projects/gerumo2/tools/output/splits/train_events.parquet
-    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL_splitted/train_telescopes.parquet
     TELESCOPES: /home/asuka/projects/gerumo2/tools/output/splits/train_telescopes.parquet
     FOLDER: null
   VALIDATION:
-    #EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL_splitted/validation_events.parquet
-    #TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ALL_splitted/validation_telescopes.parquet
     EVENTS: /home/asuka/projects/gerumo2/tools/output/splits/validation_events.parquet
     TELESCOPES: /home/asuka/projects/gerumo2/tools/output/splits/validation_telescopes.parquet
     FOLDER: null
@@ -16,17 +12,14 @@ DATASETS:
     EVENTS: null
     TELESCOPES: null
     FOLDER: null
-  AGGREGATION:
-    IGNORE_PARTICLE_TYPES: null
 GENERATOR:
   NAME: OneBatchMonoGenerator
 MODEL:
   ARCHITECTURE:
     NAME: RandomForest
     KWARGS:
-      - [num_classes, 2]
       - [n_estimators, 150]
-      - [criterion, gini]
+      - [criterion, squared_error]
       - [max_depth, null]
       - [min_samples_split, 2]
       - [min_samples_leaf, 1]
@@ -37,11 +30,10 @@ MODEL:
       - [bootstrap, True]
       - [oob_score, True]
       - [n_jobs, -1]
-      - [class_weight, null]
       - [ccp_alpha, 0]
       - [max_samples, null]
   RECONSTRUCTION_MODE: SINGLE
-  TASK: CLASSIFICATION
+  TASK: REGRESSION
   TELESCOPES: 
   - LST 
 INPUT:
@@ -63,4 +55,4 @@ INPUT:
   - hillas_kurtosis
 OUTPUT:
   MAPPER:
-    NAME: OnevsAllClassification
+    NAME: SimpleRegression

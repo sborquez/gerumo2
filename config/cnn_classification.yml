@@ -41,6 +41,5 @@ SOLVER:
 OUTPUT:
   MAPPER:
     NAME: OnevsAllClassification
-OUTPUT_DIR: /home/ir-riqu1/Prod5_data/gerumo2_test
 METRICS:
   CLASSIFICATION: [ SparseCategoricalAccuracy ]

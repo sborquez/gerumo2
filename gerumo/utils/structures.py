@@ -126,7 +126,13 @@ class Event:
         return self._fields
 
     def __repr__(self) -> str:
-        fields = ", ".join([f"{k}: {v:.2f}" for k, v in self._fields.items()])
+        fields = []
+        for k, v in self._fields.items():
+            if isinstance(v, list):
+                fields.append(f"{k}: {v}")
+            else:
+                fields.append(f"{k}: {v:.2f}")
+        fields = ", ".join(fields)
         return f"Event(id={self._event_unique_id}, energy={self._energy}, fields={fields})" # noqa
 
     def to_tensor(self, fields=None) -> np.ndarray:
