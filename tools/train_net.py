@@ -1,5 +1,9 @@
 import sys; sys.path.append('..') # noqa
+import os
 import time
+
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = '1'
+
 from gerumo.data.dataset import describe_dataset
 from gerumo.data.generators import build_generator
 from gerumo.utils.engine import (
@@ -28,11 +32,12 @@ def main(args):
     # Build model
     input_shape = train_generator.get_input_shape()
     model = build_model(cfg, input_shape)
+    output_dim = model.get_output_dim()
     # Build solver tools
     callbacks = build_callbacks(cfg)
     metrics = build_metrics(cfg)
     optimizer = build_optimizer(cfg)
-    loss = build_loss(cfg)
+    loss = build_loss(cfg, output_dim)
     # Compile model
     model = setup_model(model, train_generator, optimizer, loss, metrics)
     # Star Training

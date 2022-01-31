@@ -28,6 +28,14 @@ MODEL:
   TELESCOPES:
   - LST
   WEIGHTS: null
+INPUT:
+  IMAGE_CHANNELS:
+    - image
+    - peak_time
+    - image_mask
+  TELESCOPE_FEATURES:
+    - pos_x
+    - pos_y
 SOLVER:
   BATCH_SIZE: 64
   LOSS:

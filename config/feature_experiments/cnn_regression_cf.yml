@@ -1,4 +1,4 @@
-EXPERIMENT_NAME: CNN LST Regression
+EXPERIMENT_NAME: CNN MST Regression Concat First
 DATASETS:
   TRAIN:
     EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_events.parquet
@@ -26,7 +26,7 @@ MODEL:
   RECONSTRUCTION_MODE: SINGLE
   TASK: REGRESSION
   TELESCOPES:
-  - LST
+  - MST
   WEIGHTS: null
 INPUT:
   MAPPER:
@@ -47,6 +47,7 @@ OUTPUT:
       - true_alt
 SOLVER:
   BATCH_SIZE: 8
+  EPOCHS: 5
   LOSS:
     CLASS_NAME: MeanAbsoluteError
     CONFIG: []
