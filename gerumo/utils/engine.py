@@ -4,7 +4,8 @@ import random
 from pathlib import Path
 from datetime import datetime
 import logging
-from typing import List, Any
+from typing import List, Any, Mapping, Union
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import callbacks, metrics, optimizers, losses
@@ -169,16 +170,20 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
     return callbacks_
 
 
-def build_metrics(cfg: CfgNode) -> List[metrics.Metric]:
+def build_metrics(cfg: CfgNode, standalone=False) -> Union[List[Union[metrics.Metric, str]], Mapping[str, metrics.Metric]]:  # noqa
     metrics_ = []
+    names_ = []
     if Task[cfg.MODEL.TASK] is Task.REGRESSION:
-        for metric in cfg.METRICS.REGRESSION:
-            metrics_.append(metric)
+        metric_list = cfg.METRICS.REGRESSION
     elif Task[cfg.MODEL.TASK] is Task.CLASSIFICATION:
-        for metric in cfg.METRICS.CLASSIFICATION:
-            if 'Metric' == 'PRC':
-                metric = metrics.AUC('prc', curve='PR')
-            metrics_.append(metric)
+        metric_list = cfg.METRICS.CLASSIFICATION
+    for metric in metric_list:
+        names_.append(metric)
+        if metric == 'PRC':
+            metric = metrics.AUC(curve='PR')
+        metrics_.append(metric)
+    if standalone:
+        return {n: metrics.get(m) for (n, m) in zip(names_, metrics_)}
     return metrics_
 
 

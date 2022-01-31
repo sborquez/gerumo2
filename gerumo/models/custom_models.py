@@ -1,7 +1,10 @@
+from copyreg import pickle
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
+from sklearn import ensemble
+from sklearn import preprocessing
 
-from .base import BaseModel, MODEL_REGISTRY
+from .base import BaseModel, SKLearnModel, MODEL_REGISTRY
 from .layers import HexConvLayer, ConvBlock
 from ..utils.structures import Task
 
@@ -103,3 +106,85 @@ class CNN(BaseModel):
             front = bn(front)
             front = activation(front)
         return self._head(front)
+
+
+@MODEL_REGISTRY.register()
+class RandomForest(SKLearnModel):
+
+    _KWARGS = [
+        'num_classes',
+        'n_estimators',
+        'criterion',
+        'max_depth',
+        'min_samples_split',
+        'min_samples_leaf',
+        'min_weight_fraction_leaf',
+        'max_features',
+        'max_leaf_nodes',
+        'min_impurity_decrease',
+        'bootstrap',
+        'oob_score',
+        'n_jobs',
+        'class_weight',
+        'ccp_alpha',
+        'max_samples',
+    ]
+
+    def get_estimator(self,
+                      weights=None,
+                      num_classes=None,
+                      n_estimators=100,
+                      criterion="squared_error",  # "gini"
+                      max_depth=None, min_samples_split=2, min_samples_leaf=1,
+                      min_weight_fraction_leaf=0.0, max_features="auto",
+                      max_leaf_nodes=None, min_impurity_decrease=0.0,
+                      bootstrap=True, oob_score=False, n_jobs=None,
+                      class_weight=None, ccp_alpha=0.0, max_samples=None
+                      ):
+        assert self._input_shape.has_features()
+        assert not self._input_shape.has_image()
+        if weights is not None:
+            self.estimator = pickle.load(weights)
+            assert \
+                (self.task is Task.REGRESSION and isinstance(self.estimator, ensemble.RandomForestRegressor)) or \
+                (self.task is Task.CLASSIFICATION and isinstance(self.estimator, ensemble.RandomForestClassifier))
+
+        elif self.task is Task.REGRESSION:
+            self.estimator = ensemble.RandomForestRegressor(
+                n_estimators=n_estimators,
+                criterion=criterion,
+                max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_samples_leaf=min_samples_leaf,
+                min_weight_fraction_leaf=min_weight_fraction_leaf,
+                max_features=max_features,
+                max_leaf_nodes=max_leaf_nodes,
+                min_impurity_decrease=min_impurity_decrease,
+                bootstrap=bootstrap,
+                oob_score=oob_score,
+                n_jobs=n_jobs,
+                ccp_alpha=ccp_alpha,
+                max_samples=max_samples
+            )
+        elif self.task is Task.CLASSIFICATION:
+            assert num_classes is not None
+            self.num_classes = num_classes
+            self.encoder = preprocessing.OneHotEncoder(categories=[list(range(num_classes))])
+            self.estimator = ensemble.RandomForestClassifier(
+                    n_estimators=n_estimators,
+                    criterion=criterion,
+                    max_depth=max_depth,
+                    min_samples_split=min_samples_split,
+                    min_samples_leaf=min_samples_leaf,
+                    min_weight_fraction_leaf=min_weight_fraction_leaf,
+                    max_features=max_features,
+                    max_leaf_nodes=max_leaf_nodes,
+                    min_impurity_decrease=min_impurity_decrease,
+                    bootstrap=bootstrap,
+                    oob_score=oob_score,
+                    n_jobs=n_jobs,
+                    class_weight=class_weight,
+                    ccp_alpha=ccp_alpha,
+                    max_samples=max_samples)
+        else:
+            raise NotImplementedError

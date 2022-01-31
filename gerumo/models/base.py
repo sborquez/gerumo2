@@ -3,6 +3,7 @@ from typing import List, Optional, Union, Any
 import logging
 
 import tensorflow as tf
+import sklearn
 from fvcore.common.registry import Registry
 
 from gerumo.data.constants import TELESCOPES
@@ -23,7 +24,7 @@ The call is expected to return an :class:`BaseModel`.
 """
 
 
-def build_model(cfg, input_shape) -> 'BaseModel':
+def build_model(cfg, input_shape) -> Union['BaseModel', 'SKLearnModel']:
     """
     Build Models defined by `cfg.MODEL.ARCHITECTURE.NAME`.
     """
@@ -31,7 +32,7 @@ def build_model(cfg, input_shape) -> 'BaseModel':
     return MODEL_REGISTRY.get(name)(cfg, input_shape)
 
 
-class BaseModel(tf.keras.Model):
+class LoadableModel:
 
     _KWARGS = []
 
@@ -39,7 +40,7 @@ class BaseModel(tf.keras.Model):
     def __init__(self, input_shape: InputShape, mode: ReconstructionMode,
                  task: Task, telescopes: List[Telescope],
                  weights: Optional[str] = None, **kwargs):
-        super(BaseModel, self).__init__()
+        super(LoadableModel, self).__init__()
         assert (mode is ReconstructionMode.SINGLE and len(telescopes) == 1) \
             or (mode is ReconstructionMode.STEREO)
         self.mode = mode
@@ -48,7 +49,6 @@ class BaseModel(tf.keras.Model):
         self.weights_path = weights
         self._input_shape = input_shape
         self.enable_fit_mode = False
-        self.architecture(**kwargs)
 
     @classmethod
     def from_config(cls, cfg, input_shape):
@@ -72,14 +72,36 @@ class BaseModel(tf.keras.Model):
         self.enable_fit_mode = False
 
     def preprocess_input(self, inputs: List[Observations]):
-        """Convert list of observations into keras model's input"""
-        X = Observations.list_to_tensor(self.mode, inputs)
-        return X
+        """Convert list of observations into array input"""
+        if isinstance(inputs[0], Observations):
+            return Observations.list_to_tensor(self.mode, inputs)
+        return inputs
+
+    def preprocess_output(self, outputs: List[Event]):
+        """Convert list of events into array output"""
+        if isinstance(outputs[0], Event):
+            return Event.list_to_tensor(outputs)
+        return outputs
 
     def postprocess_output(self, outputs) -> List[Event]:
         """Convert keras model's output into list of Events."""
         # TODO: Convert into a list of Events
         return outputs
+
+
+class BaseModel(LoadableModel, tf.keras.Model):
+
+    _KWARGS = []
+
+    @configurable
+    def __init__(self, input_shape: InputShape, mode: ReconstructionMode,
+                 task: Task, telescopes: List[Telescope],
+                 weights: Optional[str] = None, **kwargs):
+        LoadableModel.__init__(
+            self, input_shape, mode, task, telescopes, weights, **kwargs
+        )
+        tf.keras.Model.__init__(self)
+        self.architecture(**kwargs)
 
     def call(self, inputs: Union[List[Observations], Any], training: bool = False):
         if training or self.enable_fit_mode:
@@ -97,6 +119,51 @@ class BaseModel(tf.keras.Model):
 
     @abstractmethod
     def forward(self, X, training=False):
+        pass
+
+
+class SKLearnModel(LoadableModel, sklearn.base.BaseEstimator):
+
+    _KWARGS = []
+
+    @configurable
+    def __init__(self, input_shape: InputShape, mode: ReconstructionMode,
+                 task: Task, telescopes: List[Telescope],
+                 weights: Optional[str] = None, **kwargs):
+        LoadableModel.__init__(
+            self, input_shape, mode, task, telescopes, weights, **kwargs
+        )
+        sklearn.base.BaseEstimator.__init__(self)
+        self.estimator = None
+        self.encoder = None
+        self.get_estimator(weights, **kwargs)
+        assert self.estimator is not None, 'estimator is `None`'
+
+    def preprocess_output(self, outputs):
+        outputs = super().preprocess_output(outputs)
+        if self.task is Task.CLASSIFICATION:
+            # one-hot encoding to categorical
+            outputs = self.encoder.fit_transform(outputs).toarray()
+        return outputs
+
+    def postprocess_output(self, outputs) -> List[Event]:
+        if self.task is Task.CLASSIFICATION:
+            # one-hot encoding to categorical
+            outputs = outputs.argmax(axis=-1).reshape((-1, 1))
+        return super().postprocess_output(outputs)
+
+    def fit(self, inputs, outputs):
+        X = self.preprocess_input(inputs)
+        y = self.preprocess_output(outputs)
+        self.estimator.fit(X, y)
+
+    def __call__(self, inputs: Union[List[Observations], Any]):
+        X = self.preprocess_input(inputs)
+        y = self.estimator.predict(X)
+        return self.postprocess_output(y)
+
+    @abstractmethod
+    def get_estimator(self, weights, **kwargs):
         pass
 
 

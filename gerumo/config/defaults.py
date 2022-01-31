@@ -97,7 +97,7 @@ _C.OUTPUT.REGRESSION.TARGETS_DOMAINS = [
     (-0.25, 0.25)
 ]
 # ----------------------------------------------------------------------------
-# Solver for training
+# Solver for training NN
 # ----------------------------------------------------------------------------
 _C.SOLVER = CN()
 _C.SOLVER.BATCH_SIZE = 64
@@ -161,10 +161,7 @@ _C.METRICS.CLASSIFICATION = [
     'TruePositives',
     'TrueNegatives',
     'FalsePositives',
-    'FalseNegatives',
-    'PrecisionAtRecall',
-    'SensitivityAtSpecificity',
-    'SpecificityAtSensitivity'
+    'FalseNegatives'
 ]
 _C.METRICS.REGRESSION = [
     'MeanSquaredError',
