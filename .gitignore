@@ -21,3 +21,4 @@ docs/build_*
 .diego
 tools/output
 notebooks/output
+datasets
