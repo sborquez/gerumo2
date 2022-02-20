@@ -1,0 +1,17 @@
+# Private folders
+.*
+*-workspace
+refactor.md
+
+# Notebooks
+notebooks/.ipynb_checkpoints
+notebooks/output
+notebooks/sandbox.ipynb
+
+# Datasets
+datasets
+
+# Docker folder
+docker/convert_docker_to_singularity.sh
+docker/gerumo2.tar
+docker/gerumo2.sif
