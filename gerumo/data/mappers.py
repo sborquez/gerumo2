@@ -203,6 +203,7 @@ class OutputRegressionMapper(OutputMapper):
         super().__init__()
         self.targets = targets
         self.domains = domains
+        self.output_dim = None
 
     @classmethod
     def from_config(cls, cfg):
@@ -210,6 +211,9 @@ class OutputRegressionMapper(OutputMapper):
             "targets": cfg.OUTPUT.REGRESSION.TARGETS,
             "domains": cfg.OUTPUT.REGRESSION.TARGETS_DOMAINS,
         }
+
+    def set_output_dim(self, output_dim):
+        self.output_dim = output_dim
 
 
 @OUTPUT_MAPPER_REGISTRY.register()
@@ -229,6 +233,28 @@ class SimpleRegression(OutputRegressionMapper):
         Returns:
             Event: an event.
         """
+        event = Event.from_dataframe(event_df, self.targets)
+        return event
+
+
+@OUTPUT_MAPPER_REGISTRY.register()
+class DiscreteMapRegression(OutputRegressionMapper):
+
+    @configurable
+    def __init__(self, targets, domains) -> None:
+        super().__init__(targets=targets, domains=domains)
+
+    def __call__(self, event_df: pd.DataFrame) -> Event:
+        """Convert event dataframe into Event structure for regression.
+        Args:
+            event_df (pd.Dataframe): Dataset of observations for an event.
+                If it is SINGLE reconstruction, `event_df` has length 1.
+                If it is STEREO reconstruction, `event_df` is all the
+                observations of corresponding to an event.
+        Returns:
+            Event: an event.
+        """
+        #  assert self.output_dim
         event = Event.from_dataframe(event_df, self.targets)
         return event
 

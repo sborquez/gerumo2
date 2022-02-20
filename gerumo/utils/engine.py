@@ -8,10 +8,16 @@ from typing import List, Any, Mapping, Union
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import callbacks, metrics, optimizers, losses
+from tensorflow.keras import callbacks, metrics, optimizers
+
 from ..config.config import CfgNode, get_cfg
 from ..utils.structures import Task
 from ..data.dataset import load_dataset, aggregate_dataset
+from ..models.losses import build_loss
+from gerumo.models.base import build_model
+
+build_model = build_model
+build_loss = build_loss
 
 
 def setup_cfg(args):
@@ -125,8 +131,17 @@ def build_dataset(cfg: CfgNode, subset: str):
     hdf5_file = cfg.DATASETS.AGGREGATION.HDF5_FILEPATH
     remove_nan = cfg.DATASETS.AGGREGATION.REMOVE_NAN
     ignore_particle_types = cfg.DATASETS.AGGREGATION.IGNORE_PARTICLE_TYPES
+    if cfg.DATASETS.AGGREGATION.IGNORE_BY_DOMAINS:
+        domains = {
+            k: v for (k, v) in zip(
+                cfg.OUTPUT.REGRESSION.TARGETS,
+                cfg.OUTPUT.REGRESSION.TARGETS_DOMAINS
+            )
+        }
+    else:
+        domains = None
     dataset = aggregate_dataset(dataset, az, log10_mc_energy, hdf5_file,
-                                remove_nan, ignore_particle_types)
+                                remove_nan, ignore_particle_types, domains)
     return dataset
 
 
@@ -205,12 +220,3 @@ def build_optimizer(cfg: CfgNode) -> Any:
         'config': optimizer_config
     })
     return optimizer_
-
-
-def build_loss(cfg: CfgNode) -> Any:
-    loss_config = {k: v for k, v in cfg.SOLVER.LOSS.CONFIG}
-    loss_ = losses.get({
-        'class_name': cfg.SOLVER.LOSS.CLASS_NAME,
-        'config': loss_config
-    })
-    return loss_

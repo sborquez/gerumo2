@@ -83,7 +83,7 @@ class LoadableModel:
             return Event.list_to_tensor(outputs)
         return outputs
 
-    def postprocess_output(self, outputs) -> List[Event]:
+    def postprocess_output(self, outputs, inputs: List[Event]) -> List[Event]:
         """Convert keras model's output into list of Events."""
         # TODO: Convert into a list of Events
         return outputs
@@ -111,7 +111,7 @@ class BaseModel(LoadableModel, tf.keras.Model):
         else:
             X = self.preprocess_input(inputs)
             y = self.forward(X, training)
-            return self.postprocess_output(y)
+            return self.postprocess_output(y, X)
 
     @abstractmethod
     def architecture(self, **kwargs):
@@ -121,6 +121,9 @@ class BaseModel(LoadableModel, tf.keras.Model):
     def forward(self, X, training=False):
         pass
 
+    @abstractmethod
+    def get_output_dim(self):
+        pass
 
 class SKLearnModel(LoadableModel, sklearn.base.BaseEstimator):
 

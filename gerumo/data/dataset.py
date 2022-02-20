@@ -530,7 +530,7 @@ def describe_dataset(dataset, logger=None, save_to=None):
 
 
 def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True,
-                      remove_nan=True, ignore_particle_types=[]):
+                      remove_nan=True, ignore_particle_types=[], domains=None):
     """Perform simple aggegation to targe columns.
 
     Args:
@@ -562,4 +562,7 @@ def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True,
         dataset.dropna(inplace=True)
     if ignore_particle_types:
         dataset = dataset[~dataset.particle_type.isin(ignore_particle_types)]
+    if domains is not None:
+        for target, domain in domains.items():
+            dataset = dataset[(dataset[target] >= domain[0]) & (dataset[target] <= domain[1])]
     return dataset

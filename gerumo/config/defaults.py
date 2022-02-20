@@ -54,6 +54,7 @@ _C.DATASETS.AGGREGATION.LOG10_ENERGY = True
 _C.DATASETS.AGGREGATION.HDF5_FILEPATH = True
 _C.DATASETS.AGGREGATION.REMOVE_NAN = True
 _C.DATASETS.AGGREGATION.IGNORE_PARTICLE_TYPES = []
+_C.DATASETS.AGGREGATION.IGNORE_BY_DOMAINS = True
 # -----------------------------------------------------------------------------
 # Generator
 # -----------------------------------------------------------------------------
@@ -93,8 +94,8 @@ _C.OUTPUT.CLASSIFICATION.CLASSES = ["gamma", "proton"]
 _C.OUTPUT.REGRESSION = CN()
 _C.OUTPUT.REGRESSION.TARGETS = ["true_az", "true_alt"]
 _C.OUTPUT.REGRESSION.TARGETS_DOMAINS = [
-    (1.15, 1.3),
-    (-0.25, 0.25)
+    (-30, 30),
+    (60, 80)
 ]
 # ----------------------------------------------------------------------------
 # Solver for training NN
