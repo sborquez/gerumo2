@@ -81,7 +81,7 @@ class BaseGenerator(tf.keras.utils.Sequence):
                     ) -> Tuple[List[Observations], List[Event]]:
         'Generate one batch of data'
         # Generate indexes of the batch
-        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
         # Generate data
         observations, events = self._data_generation(indexes)
         if self.enable_fit_mode:

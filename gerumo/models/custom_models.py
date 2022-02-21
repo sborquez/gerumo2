@@ -78,18 +78,18 @@ class CNN(BaseModel):
                 bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
                 activity_regularizer=regularizers.l1_l2(l1=kl1, l2=al2))
         self._conv_blocks = [
-            ConvBlock(2**(7+i), k,
+            ConvBlock(2**(7 + i), k,
                       kernel_regularizer_l1=kl1, kernel_regularizer_l2=kl2,
                       activity_regularizer_l1=kl1, activity_regularizer_l2=al2,
                       layer_norm=layer_norm)
             for i, k in enumerate(conv_kernel_sizes)
         ]
         self._compress_channels = layers.Conv2D(
-                filters=last_channels, kernel_size=1, activation="relu",
-                kernel_initializer='he_uniform', padding='valid',
-                kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-                bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-                activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2)
+            filters=last_channels, kernel_size=1, activation="relu",
+            kernel_initializer='he_uniform', padding='valid',
+            kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+            bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+            activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2)
         )
         self._flatten = layers.Flatten()
         # Feature Branch
@@ -246,18 +246,18 @@ class UmonneModel(BaseModel):
                 bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
                 activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2))
         self._conv_blocks = [
-            ConvBlock(2**(7+i), k,
+            ConvBlock(2**(7 + i), k,
                       kernel_regularizer_l1=kl1, kernel_regularizer_l2=kl2,
                       activity_regularizer_l1=kl1, activity_regularizer_l2=al2,
                       layer_norm=layer_norm)
             for i, k in enumerate(conv_kernel_sizes)
         ]
         self._compress_channels = layers.Conv2D(
-                filters=last_channels, kernel_size=1, activation="relu",
-                kernel_initializer='he_uniform', padding='valid',
-                kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-                bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-                activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2)
+            filters=last_channels, kernel_size=1, activation="relu",
+            kernel_initializer='he_uniform', padding='valid',
+            kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+            bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+            activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2)
         )
         self._flatten = layers.Flatten()
         # Feature Branch
@@ -278,7 +278,7 @@ class UmonneModel(BaseModel):
             raise NotImplementedError
         self.num_classes = None
         self.num_targets = self.output_dim = num_targets
-        starting_head_dimensions = self.output_dim*[1] + [-1]
+        starting_head_dimensions = self.output_dim * [1] + [-1]
         self._head_reshaper = layers.Reshape(starting_head_dimensions)
         n_upsampling_blocks = len(upsampling_kernel_sizes)
         self._upsampling_blocks = [
@@ -345,9 +345,9 @@ class UmonneModel(BaseModel):
             raise NotImplementedError(self.point_estimation_mode)
         old = np.array(y.shape[1:]) - 1
         new = self.target_domains
-        m = (new[:, 1] - new[:, 0])/old
+        m = (new[:, 1] - new[:, 0]) / old
         b = new[:, 0]
-        return (m*y_idxs + b)
+        return (m * y_idxs + b)
 
 
 @MODEL_REGISTRY.register()
@@ -413,20 +413,21 @@ class RandomForest(SKLearnModel):
             self.num_classes = num_classes
             self.encoder = preprocessing.OneHotEncoder(categories=[list(range(num_classes))])
             self.estimator = ensemble.RandomForestClassifier(
-                    n_estimators=n_estimators,
-                    criterion=criterion,
-                    max_depth=max_depth,
-                    min_samples_split=min_samples_split,
-                    min_samples_leaf=min_samples_leaf,
-                    min_weight_fraction_leaf=min_weight_fraction_leaf,
-                    max_features=max_features,
-                    max_leaf_nodes=max_leaf_nodes,
-                    min_impurity_decrease=min_impurity_decrease,
-                    bootstrap=bootstrap,
-                    oob_score=oob_score,
-                    n_jobs=n_jobs,
-                    class_weight=class_weight,
-                    ccp_alpha=ccp_alpha,
-                    max_samples=max_samples)
+                n_estimators=n_estimators,
+                criterion=criterion,
+                max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_samples_leaf=min_samples_leaf,
+                min_weight_fraction_leaf=min_weight_fraction_leaf,
+                max_features=max_features,
+                max_leaf_nodes=max_leaf_nodes,
+                min_impurity_decrease=min_impurity_decrease,
+                bootstrap=bootstrap,
+                oob_score=oob_score,
+                n_jobs=n_jobs,
+                class_weight=class_weight,
+                ccp_alpha=ccp_alpha,
+                max_samples=max_samples
+            )
         else:
             raise NotImplementedError

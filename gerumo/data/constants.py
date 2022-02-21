@@ -2,16 +2,16 @@
 Data and dataset constants
 ==========================
 """
-from astropy.units.cds import rad, eV
+from astropy.units.cds import eV, degree
 import numpy as np
 from ..utils.structures import Telescope
 
 # Telescopes types
 TELESCOPES = {
-    "LST":  Telescope("LST", "LST", "LSTCam"),
+    'LST': Telescope('LST', 'LST', 'LSTCam'),
     # "MST": Telescope("MST", "MST", "NectarCam"),
-    "MST": Telescope("MST", "MST", "FlashCam"),
-    "SST": Telescope("ASTRI", "SST", "CHEC")
+    'MST': Telescope('MST', 'MST', 'FlashCam'),
+    'SST': Telescope('ASTRI', 'SST', 'CHEC')
 }
 
 # Telescope array information
@@ -36,8 +36,8 @@ TELESCOPE_FEATURES = [
 ] + HILLAS_PARAMETERS
 
 # Regression Targets
-REGRESSION_TARGETS = ["alt", "az", "mc_energy", "log10_mc_energy"]
-REGRESSION_TARGET_UNITS = [rad, rad, 1e12*eV, np.log10(1e12)*eV]
+REGRESSION_TARGETS = ['az', 'alt', 'mc_energy', 'log10_mc_energy']
+REGRESSION_TARGET_UNITS = [degree, degree, 1e12 * eV, np.log10(1e12) * eV]
 
 # Classification Target
-CLASSIFICATION_TARGET = ["particle_type"]
+CLASSIFICATION_TARGET = ['particle_type']

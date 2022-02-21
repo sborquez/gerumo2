@@ -34,12 +34,12 @@ def build_input_mapper(cfg) -> 'InputMapper':
 class InputMapper:
     """Convert raw input from hdf5 into the model's input format"""
 
-    IMAGE_TABLE = "/dl1/event/telescope/images/tel_{0}"
+    IMAGE_TABLE = '/dl1/event/telescope/images/tel_{0}'
 
     CHANNELS_TO_IDX = {
-        "image": 3,
-        "peak_time": 4,
-        "image_mask": 5
+        'image': 3,
+        'peak_time': 4,
+        'image_mask': 5
     }
 
     def __init__(self, image_channels: List[str],
@@ -69,7 +69,7 @@ class InputMapper:
     def load_image_data(self, hdf5_file: str,
                         tel_id: int, observation_idx: int) -> List[np.ndarray]:
         image_data = []
-        h5 = tables.open_file(hdf5_file, "r")
+        h5 = tables.open_file(hdf5_file, 'r')
         image_table = InputMapper.IMAGE_TABLE.format(str(tel_id).zfill(3))
         for channel in self.image_channels:
             channel_idx = InputMapper.CHANNELS_TO_IDX[channel]
@@ -99,9 +99,9 @@ class SimpleSquareImage(InputMapper):
         telescope_features = cfg.INPUT.TELESCOPE_FEATURES
         reconstruction_mode = cfg.MODEL.RECONSTRUCTION_MODE
         return {
-            "image_channels": image_channels,
-            "telescope_features": telescope_features,
-            "mode": ReconstructionMode[reconstruction_mode]
+            'image_channels': image_channels,
+            'telescope_features': telescope_features,
+            'mode': ReconstructionMode[reconstruction_mode]
         }
 
     def get_input_shape(self) -> InputShape:
@@ -113,7 +113,7 @@ class SimpleSquareImage(InputMapper):
         c = len(data)
         w, h = telescope.get_aligned_pixels_positions()[0].max(axis=1) + 1
         image_shape = (h, w, c)
-        canvas = np.zeros(image_shape, dtype="float32")
+        canvas = np.zeros(image_shape, dtype='float32')
         for i in range(c):
             canvas[y, x, i] = data[i]
         return canvas
@@ -137,9 +137,9 @@ class SimpleSquareImage(InputMapper):
             telescopes.append(telescope)
             if len(self.image_channels) > 0:
                 data = self.load_image_data(
-                    event_row["hdf5_filepath"],
-                    event_row["tel_id"],
-                    event_row["observation_idx"]
+                    event_row['hdf5_filepath'],
+                    event_row['tel_id'],
+                    event_row['observation_idx']
                 )
                 images.append(
                     self.raw_to_image(data, telescope)
@@ -208,8 +208,8 @@ class OutputRegressionMapper(OutputMapper):
     @classmethod
     def from_config(cls, cfg):
         return {
-            "targets": cfg.OUTPUT.REGRESSION.TARGETS,
-            "domains": cfg.OUTPUT.REGRESSION.TARGETS_DOMAINS,
+            'targets': cfg.OUTPUT.REGRESSION.TARGETS,
+            'domains': cfg.OUTPUT.REGRESSION.TARGETS_DOMAINS,
         }
 
     def set_output_dim(self, output_dim):
@@ -272,9 +272,9 @@ class OutputClassificationMapper(OutputMapper):
     @classmethod
     def from_config(cls, cfg):
         return {
-            "target": cfg.OUTPUT.CLASSIFICATION.TARGET,
-            "num_classes": cfg.OUTPUT.CLASSIFICATION.NUM_CLASSES,
-            "classes": cfg.OUTPUT.CLASSIFICATION.CLASSES
+            'target': cfg.OUTPUT.CLASSIFICATION.TARGET,
+            'num_classes': cfg.OUTPUT.CLASSIFICATION.NUM_CLASSES,
+            'classes': cfg.OUTPUT.CLASSIFICATION.CLASSES
         }
 
 
@@ -296,7 +296,7 @@ class SimpleCategorical(OutputClassificationMapper):
             Event: an event.
         """
         event = Event.from_dataframe(event_df, [])
-        event.set("true_class_id",
+        event.set('true_class_id',
                   self.classes.index(event_df.iloc[0][self.target]))
         return event
 
@@ -320,6 +320,6 @@ class OnevsAllClassification(OutputClassificationMapper):
             Event: an event.
         """
         event = Event.from_dataframe(event_df, [])
-        event.set("true_class_id",
+        event.set('true_class_id',
                   int(event_df.iloc[0][self.target] == self.classes[1]))
         return event

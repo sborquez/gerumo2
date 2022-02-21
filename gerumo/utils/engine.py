@@ -1,8 +1,8 @@
 import os
 import sys
 import random
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 import logging
 from typing import List, Any, Mapping, Union
 
@@ -61,13 +61,19 @@ def setup_environment(cfg):
     fileHandler.setFormatter(formatter)
     logging.getLogger().addHandler(fileHandler)
 
-    return logging.getLogger("[GERUMO]")
+    return logging.getLogger('[GERUMO]')
 
 
-def setup_experiment(cfg: CfgNode) -> Path:
+def setup_experiment(cfg: CfgNode, training=True) -> Path:
     # Experiment folder
-    cfg.defrost()
     output_dir = Path(cfg.OUTPUT_DIR).absolute()
+    # Evaluation
+    if not training:
+        if not output_dir.exists:
+            raise ValueError(f'{output_dir} does not exist.')
+        return output_dir
+    # Training
+    cfg.defrost()
     experiment_folder = f'{cfg.EXPERIMENT_NAME}'.replace(' ', '_').lower()
     experiment_folder += f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
     new_output_dir = output_dir / experiment_folder
@@ -91,6 +97,19 @@ def setup_model(model, generator, optimizer, loss, metrics):
         metrics=metrics
     )
     model.summary()
+    return model
+
+
+def load_model(model, generator, output_dir, epoch_idx=-1):
+    checkpoints = sorted(list(Path(output_dir).glob('weights/*.h5')))
+    if len(checkpoints) == 0:
+        raise ValueError('Model doesn`t have checkpoints')
+    if epoch_idx >= 0 and len(checkpoints) <= epoch_idx:
+        raise ValueError(f'Epoch_idx should be in [0, {len(checkpoints)}) or -1: {epoch_idx}')
+    checkpoint = checkpoints[epoch_idx]
+    X = generator[0][0]
+    _ = model(X)
+    model.load_weights(checkpoint)
     return model
 
 
@@ -126,7 +145,7 @@ def build_dataset(cfg: CfgNode, subset: str):
         raise ValueError('Invalid subset', subset)
     dataset = load_dataset(events_path, telescopes_path, replace_folder)
     # Aggregate
-    az = cfg.DATASETS.AGGREGATION.CENTER_AZ
+    center_az = cfg.DATASETS.AGGREGATION.CENTER_AZ
     log10_mc_energy = cfg.DATASETS.AGGREGATION.LOG10_ENERGY
     hdf5_file = cfg.DATASETS.AGGREGATION.HDF5_FILEPATH
     remove_nan = cfg.DATASETS.AGGREGATION.REMOVE_NAN
@@ -140,7 +159,7 @@ def build_dataset(cfg: CfgNode, subset: str):
         }
     else:
         domains = None
-    dataset = aggregate_dataset(dataset, az, log10_mc_energy, hdf5_file,
+    dataset = aggregate_dataset(dataset, center_az, log10_mc_energy, hdf5_file,
                                 remove_nan, ignore_particle_types, domains)
     return dataset
 
