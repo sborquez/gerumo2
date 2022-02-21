@@ -9,7 +9,6 @@ and models comparison.
 """
 from os.path import join
 import matplotlib.pyplot as plt
-import seaborn as sns; sns.set()  # noqa
 
 
 """
@@ -25,7 +24,7 @@ def training_history(history, training_time, model_name,
     """
     fig = plt.figure(figsize=(12, 6))
     epochs = len(history.history['loss'])  # fix: early stop
-    epochs = [i for i in range(1, epochs+1)]
+    epochs = [i for i in range(1, epochs + 1)]
     plt.plot(epochs, history.history['loss'], "--", label="Train")
     plt.plot(epochs, history.history['val_loss'], "--", label="Validation")
 

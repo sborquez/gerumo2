@@ -31,7 +31,7 @@ _C.ENSEMBLER.WEIGHTS = []       # Only weights checkpoint files
 # Dataset
 # -----------------------------------------------------------------------------
 _C.DATASETS = CN()
-_C.DATASETS.POINTING = (0, 20)
+_C.DATASETS.POINTING = (0, 70)
 # Train dataset paths to events and telescopes folder or parquet files
 _C.DATASETS.TRAIN = CN()
 _C.DATASETS.TRAIN.EVENTS = None

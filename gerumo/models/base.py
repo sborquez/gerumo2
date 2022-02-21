@@ -49,6 +49,7 @@ class LoadableModel:
         self.weights_path = weights
         self._input_shape = input_shape
         self.enable_fit_mode = False
+        self.__model = None
 
     @classmethod
     def from_config(cls, cfg, input_shape):
@@ -60,10 +61,24 @@ class LoadableModel:
             'weights': cfg.MODEL.WEIGHTS
         }
         config.update({
-                k: v for k, v in cfg.MODEL.ARCHITECTURE.KWARGS
-                if k in cls._KWARGS
+            k: v for k, v in cfg.MODEL.ARCHITECTURE.KWARGS if k in cls._KWARGS
         })
         return config
+
+    def _get_model(self):
+        if self.__model is None:
+            x = [tf.keras.Input(shape=s_i[1:]) for s_i in self._input_shape.get()]
+            self.__model = tf.keras.Model(inputs=[x], outputs=self.call(x))
+        return self.__model
+
+    def summary(self):
+        return self._get_model().summary()
+    
+    def plot(self, *args, **kwargs):
+        return tf.keras.utils.plot_model(
+            self._get_model(),
+            *args, **kwargs
+        )
 
     def fit_mode(self):
         self.enable_fit_mode = True
@@ -124,6 +139,7 @@ class BaseModel(LoadableModel, tf.keras.Model):
     @abstractmethod
     def get_output_dim(self):
         pass
+
 
 class SKLearnModel(LoadableModel, sklearn.base.BaseEstimator):
 

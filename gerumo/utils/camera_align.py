@@ -3,9 +3,9 @@ import numpy as np
 
 def compute_alignment(camera_type: str,
                       pixels_positions: np.ndarray) -> np.ndarray:
-    if camera_type == "LSTCam":
+    if camera_type == 'LSTCam':
         pixels_positions = LST_LSTCam_align(pixels_positions)
-    if camera_type == "CHEC":
+    if camera_type == 'CHEC':
         return SST_CHEC_to_indices(pixels_positions)
     else:
         return to_simple_and_shift(pixels_positions)
@@ -14,16 +14,16 @@ def compute_alignment(camera_type: str,
 def LST_LSTCam_align(pixpos: np.ndarray) -> np.ndarray:
     xs, ys = pixpos
     # Distance matrix:
-    delta_x = np.array([xs])-np.array([xs]).T
-    delta_y = np.array([ys])-np.array([ys]).T
-    dists = (delta_x**2+delta_y**2)**0.5
+    delta_x = np.array([xs]) - np.array([xs]).T
+    delta_y = np.array([ys]) - np.array([ys]).T
+    dists = (delta_x**2 + delta_y**2)**0.5
     angles = np.arctan2(delta_y, delta_x)  # Angles from -pi to pi
     # Binary search, find maximum radious where no cell has more
     # than 6 neighbors
     rad1 = 0
     rad2 = np.max(dists)
     for i in range(1000):
-        rad = (rad1+rad2)/2.0
+        rad = (rad1 + rad2) / 2.0
         neighs = dists < rad  # matrix with true if i,j are neighbors
         np.fill_diagonal(neighs, False)
         max_neighs = np.max(np.sum(neighs, axis=1))
@@ -36,7 +36,7 @@ def LST_LSTCam_align(pixpos: np.ndarray) -> np.ndarray:
     neighs = dists < rad
     # Get a group of angles on an interval:
     ang_start = 0
-    ang_end = np.pi*(6//2)
+    ang_end = np.pi * (6 // 2)
     # Neighbors with angle between those two
     conditions = np.all(
         [neighs, angles >= ang_start, angles < ang_end], axis=0)
@@ -47,16 +47,16 @@ def LST_LSTCam_align(pixpos: np.ndarray) -> np.ndarray:
     main_x = np.cos(main_axis_ang)
     main_y = np.sin(main_axis_ang)
     # Apply transformation
-    tx = xs*main_x+ys*main_y
-    ty = xs*main_y-ys*main_x
+    tx = xs * main_x + ys * main_y
+    ty = xs * main_y - ys * main_x
     # Now compute the maximum separation between neighboors in the main axis. # noqa
-    dx = np.max(delta_x[neighs]*main_x+delta_y[neighs]*main_y)
+    dx = np.max(delta_x[neighs] * main_x + delta_y[neighs] * main_y)
     # Scale main axis by half of that separation:
-    tx = np.round(tx/(dx/2.0))
+    tx = np.round(tx / (dx / 2.0))
     # Now compute the maximum separation between neighboors in the secondary axis. # noqa
-    dy = np.max(delta_x[neighs]*main_y-delta_y[neighs]*main_x)
+    dy = np.max(delta_x[neighs] * main_y - delta_y[neighs] * main_x)
     # Scale secondary axis by that separation:
-    ty = np.round(ty/dy)
+    ty = np.round(ty / dy)
     return np.stack((tx, ty))
 
 
@@ -64,7 +64,7 @@ def SST_CHEC_to_indices(pixpos: np.ndarray) -> np.ndarray:
     new_pixpos = pixpos.copy()
     new_pixpos = pixpos.copy()
     new_pixpos -= new_pixpos.min(axis=1, keepdims=True)
-    xs, ys = (100*new_pixpos/new_pixpos.max(axis=1, keepdims=True)).astype(int)
+    xs, ys = (100 * new_pixpos / new_pixpos.max(axis=1, keepdims=True)).astype(int)
     new_xs = np.zeros_like(xs)
     new_ys = np.zeros_like(ys)
     for i, yl in enumerate(np.sort(np.unique(ys))):
@@ -93,7 +93,7 @@ def to_simple_and_shift(pixpos: np.ndarray) -> np.ndarray:
     for level, y_value in enumerate(y_levels):
         indices = i[ys == y_value]
         if dx == 0:
-            dx = np.diff(np.sort(xs[indices])).min()/2
+            dx = np.diff(np.sort(xs[indices])).min() / 2
         if level % 2 != 0:
             new_x_l[indices] -= dx
             new_x_r[indices] += dx

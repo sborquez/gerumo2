@@ -113,7 +113,7 @@ def extract_data(hdf5_filepath, enable_pbar=True, logger=None):
     array_data = pd.DataFrame(array_data)
     n_telescopes = len(array_data)
     obs_counter = np.zeros(n_telescopes, dtype=int)
-    telescopes_ids = np.arange(1, 1+n_telescopes)
+    telescopes_ids = np.arange(1, 1 + n_telescopes)
     n_events = len(hdf5_file.root[event_info_table])
     try:
         total = n_events
@@ -122,7 +122,7 @@ def extract_data(hdf5_filepath, enable_pbar=True, logger=None):
                 zip(hdf5_file.root[event_info_table],
                     hdf5_file.root[event_triggers_table]),
                 total=total
-                )
+            )
         else:
             iterable = zip(hdf5_file.root[event_info_table],
                            hdf5_file.root[event_triggers_table])
@@ -365,10 +365,10 @@ def generate_dataset_multiprocess(file_paths: str, output_folder: str,
 
     # If output folder doesn't exists
     if not path.exists(output_folder):
-        logging.info(f"creating folder {telescopes_folder}")
-        logging.info(f"creating folder {events_folder}")
-    makedirs(path.join(output_folder, "telescopes"), exist_ok=True)
-    makedirs(path.join(output_folder, "events"), exist_ok=True)
+        logging.info(f'creating folder {telescopes_folder}')
+        logging.info(f'creating folder {events_folder}')
+    makedirs(path.join(output_folder, 'telescopes'), exist_ok=True)
+    makedirs(path.join(output_folder, 'events'), exist_ok=True)
 
     # Appending index
     file_counter = len(listdir(events_folder))
@@ -455,8 +455,8 @@ def load_dataset(events_path, telescopes_path, replace_folder=None, merge=True):
         # Join tables
         dataset = pd.merge(events_data,
                            telescopes_data,
-                           on="event_unique_id",
-                           validate="1:m"
+                           on='event_unique_id',
+                           validate='1:m'
                            )
         return dataset
     else:
@@ -479,10 +479,10 @@ def save_dataset(dataset, output_folder, prefix=None):
     # Unmerge dataset
     event_drop = [
         field for field in telescope_fieldnames if field != 'event_unique_id'
-        ]
+    ]
     telescope_drop = [
         field for field in event_fieldnames if field != 'event_unique_id'
-        ]
+    ]
     telescope_data = dataset.drop(columns=telescope_drop)
     event_data = dataset.drop(columns=event_drop)
     event_data = event_data.drop_duplicates()
@@ -529,35 +529,36 @@ def describe_dataset(dataset, logger=None, save_to=None):
             save_file.write(by_telescope.to_string())
 
 
-def aggregate_dataset(dataset, az=True, log10_mc_energy=True, hdf5_file=True,
+def aggregate_dataset(dataset, center_az=True, log10_mc_energy=True, hdf5_file=True,
                       remove_nan=True, ignore_particle_types=[], domains=None):
     """Perform simple aggegation to targe columns.
 
     Args:
         dataset (pd.DataFrame): [description]
-        az (bool, optional): Translate domain from [0, 360] to [-180, 180].
+        center_az (bool, optional): Translate domain from [0, 360] to [-180, 180].
             Defaults to True.
         log10_mc_energy (bool, optional): Add new log10_mc_energy column,
             with the logarithm values of mc_energy. Defaults to True.
         hdf5_file (bool, optional): Replace source folder. Defaults to True.
-        ignore_particle_types (list[str], optional): Ignore samples with a 
+        ignore_particle_types (list[str], optional): Ignore samples with a
             particle type from the list.
     Returns:
         pd.DataFrame: Dataset with aggregate information.
     """
-    if az:
-        dataset["true_az"] = np.rad2deg(
-            np.deg2rad(dataset["true_az"]).apply(
+    if center_az:
+        dataset['true_az'] = np.rad2deg(
+            np.deg2rad(dataset['true_az']).apply(
                 lambda rad: np.arctan2(np.sin(rad), np.cos(rad))
-            ))
+            )
+        )
     if log10_mc_energy:
-        dataset["true_log10_energy"] = dataset["true_energy"].apply(
+        dataset['true_log10_energy'] = dataset['true_energy'].apply(
             lambda energy: np.log10(energy)
-            )
+        )
     if hdf5_file:
-        dataset["hdf5_filepath"] = dataset[["folder", "source"]].apply(
+        dataset['hdf5_filepath'] = dataset[['folder', 'source']].apply(
             lambda x: path.join(x[0], x[1]), axis=1
-            )
+        )
     if remove_nan:
         dataset.dropna(inplace=True)
     if ignore_particle_types:
