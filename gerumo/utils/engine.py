@@ -27,7 +27,7 @@ def get_dataset_name(cfg, subset):
         dataset = cfg.DATASETS.VALIDATION.EVENTS
     else:
         dataset = cfg.DATASETS.TRAIN.EVENTS
-    return '_'.join(Path(dataset).name.split('_')[:-1])    
+    return '_'.join(Path(dataset).name.split('_')[:-1])
 
 
 def setup_cfg(args):
