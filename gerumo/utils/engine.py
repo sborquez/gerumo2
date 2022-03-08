@@ -20,7 +20,18 @@ build_model = build_model
 build_loss = build_loss
 
 
+def get_dataset_name(cfg, subset):
+    if subset == 'test':
+        dataset = cfg.DATASETS.TEST.EVENTS
+    elif (subset == 'val') or (subset == 'validation'):
+        dataset = cfg.DATASETS.VALIDATION.EVENTS
+    else:
+        dataset = cfg.DATASETS.TRAIN.EVENTS
+    return '_'.join(Path(dataset).name.split('_')[:-1])
+
+
 def setup_cfg(args):
+    """Load configuration object from cmd arguments."""
     cfg = get_cfg()
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
@@ -29,6 +40,7 @@ def setup_cfg(args):
 
 
 def setup_environment(cfg):
+    """Setup device and setup a seed for the environment"""
     # Disable cuda
     if cfg.MODEL.DEVICE == 'cpu':
         tf.config.set_visible_devices([], 'GPU')
@@ -65,25 +77,29 @@ def setup_environment(cfg):
 
 
 def setup_experiment(cfg: CfgNode, training=True) -> Path:
+    """Setup experiment folders for training or evaluation a model."""
     # Experiment folder
     output_dir = Path(cfg.OUTPUT_DIR).absolute()
     # Evaluation
     if not training:
         if not output_dir.exists:
             raise ValueError(f'{output_dir} does not exist.')
-        return output_dir
-    # Training
-    cfg.defrost()
-    experiment_folder = f'{cfg.EXPERIMENT_NAME}'.replace(' ', '_').lower()
-    experiment_folder += f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
-    new_output_dir = output_dir / experiment_folder
-    cfg.OUTPUT_DIR = str(new_output_dir)
-    cfg.freeze()
-    # Create new folder
-    new_output_dir.mkdir(parents=True, exist_ok=False)
-    # Copy config
-    with open(new_output_dir / 'config.yml', 'w') as f:
-        f.write(cfg.dump())
+        evaluation_dir = output_dir / 'evaluation'
+        evaluation_dir.mkdir(exist_ok=True)
+        return output_dir, evaluation_dir
+    else:
+        # Training
+        cfg.defrost()
+        experiment_folder = f'{datetime.now().strftime("%Y%m%d_%H%M%S")}_'
+        experiment_folder += f'{cfg.EXPERIMENT_NAME}'.replace(' ', '_').lower()
+        new_output_dir = output_dir / experiment_folder
+        cfg.OUTPUT_DIR = str(new_output_dir)
+        cfg.freeze()
+        # Create new folder
+        new_output_dir.mkdir(parents=True, exist_ok=False)
+        # Copy config
+        with open(new_output_dir / 'config.yml', 'w') as f:
+            f.write(cfg.dump())
     return new_output_dir
 
 
@@ -100,7 +116,8 @@ def setup_model(model, generator, optimizer, loss, metrics):
     return model
 
 
-def load_model(model, generator, output_dir, epoch_idx=-1):
+def load_model(model, generator: Any, output_dir: Union[Path, str], epoch_idx: int = -1):
+    """Load model's weights from a checkpoint at given epoch."""
     checkpoints = sorted(list(Path(output_dir).glob('weights/*.h5')))
     if len(checkpoints) == 0:
         raise ValueError('Model doesn`t have checkpoints')
@@ -109,25 +126,16 @@ def load_model(model, generator, output_dir, epoch_idx=-1):
     checkpoint = checkpoints[epoch_idx]
     X = generator[0][0]
     _ = model(X)
-    model.load_weights(checkpoint)
+    try:
+        model.load_weights(checkpoint)
+    except ValueError:
+        model._get_model()
+        model.load_weights(checkpoint)
     return model
 
 
-def overwrite_output_dir(cfg: CfgNode):
-    """"Add custom output dir using configuratioCNn options"""
-    cfg.defrost()
-    model_folder = f'freeze_at_{str(cfg.MODEL.BACKBONE.FREEZE_AT)}_'
-    model_folder += f'resize_{cfg.INPUT.MAX_SIZE_TRAIN}_{cfg.INPUT.MIN_SIZE_TRAIN[0]}'  # noqa
-    model_folder += f'_anchors_{len(cfg.MODEL.ANCHOR_GENERATOR.SIZES[0])}'
-    model_folder += f'_aspect_ratios_{len(cfg.MODEL.ANCHOR_GENERATOR.ASPECT_RATIOS[0])}'  # noqa
-    model_folder += f'_{datetime.now().strftime("%Y%m%d_%H%M%S")}'
-    backbone = '_'.join(cfg.MODEL.BACKBONE.NAME.split('_')[1:-1])
-    output_dir = Path(cfg.OUTPUT_DIR).absolute() / backbone.lower() / model_folder  # noqa
-    cfg.OUTPUT_DIR = str(output_dir)
-    cfg.freeze()
-
-
 def build_dataset(cfg: CfgNode, subset: str):
+    """Load a dataset subset from configuration."""
     # Load dataset subset
     if subset == 'train':
         events_path = cfg.DATASETS.TRAIN.EVENTS
@@ -165,6 +173,7 @@ def build_dataset(cfg: CfgNode, subset: str):
 
 
 def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
+    """Setup callback for training Neural Networks from configuration."""
     callbacks_ = []
     # Early Stop
     if cfg.CALLBACKS.EARLY_STOP.ENABLE:
@@ -177,12 +186,14 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
                 restore_best_weights=cfg.CALLBACKS.EARLY_STOP.RESTORE_BEST_WEIGHTS  # noqa
             )
         )
+    # Tensorboard logs
     if cfg.CALLBACKS.TENSORBOARD.ENABLE:
         callbacks_.append(
             callbacks.TensorBoard(
                 log_dir=Path(cfg.OUTPUT_DIR) / 'logs'
             )
         )
+    # Periodic checkpoint weights
     if cfg.CALLBACKS.MODELCHECKPOINT.ENABLE:
         folder_path = Path(cfg.OUTPUT_DIR) / 'weights'
         folder_path.mkdir()
@@ -195,6 +206,7 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
                 save_weights_only=cfg.CALLBACKS.MODELCHECKPOINT.WEIGHTS_ONLY
             )
         )
+    # Log metrics into a file
     if cfg.CALLBACKS.CSVLOGGER.ENABLE:
         callbacks_.append(
             callbacks.CSVLogger(
@@ -204,7 +216,8 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
     return callbacks_
 
 
-def build_metrics(cfg: CfgNode, standalone=False) -> Union[List[Union[metrics.Metric, str]], Mapping[str, metrics.Metric]]:  # noqa
+def build_metrics(cfg: CfgNode, standalone=False) -> Union[List[Union[metrics.Metric, str]], Mapping[str, metrics.Metric]]:
+    """Build keras metrics from configuration."""
     metrics_ = []
     names_ = []
     if Task[cfg.MODEL.TASK] is Task.REGRESSION:
@@ -222,6 +235,7 @@ def build_metrics(cfg: CfgNode, standalone=False) -> Union[List[Union[metrics.Me
 
 
 def build_optimizer(cfg: CfgNode) -> Any:
+    """Build optimizers for training Neural Networks from configuration."""
     if cfg.SOLVER.LR_EXPDECAY.ENABLE:
         lr_scheduler = optimizers.schedules.ExponentialDecay(
             initial_learning_rate=cfg.SOLVER.BASE_LR,

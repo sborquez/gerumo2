@@ -2,8 +2,7 @@
 Data and dataset constants
 ==========================
 """
-from astropy.units.cds import eV, degree
-import numpy as np
+import astropy.units as u
 from ..utils.structures import Telescope
 
 # Telescopes types
@@ -37,7 +36,7 @@ TELESCOPE_FEATURES = [
 
 # Regression Targets
 REGRESSION_TARGETS = ['az', 'alt', 'mc_energy', 'log10_mc_energy']
-REGRESSION_TARGET_UNITS = [degree, degree, 1e12 * eV, np.log10(1e12) * eV]
+REGRESSION_TARGET_UNITS = [u.deg, u.deg, u.TeV, u.TeV]
 
 # Classification Target
 CLASSIFICATION_TARGET = ['particle_type']

@@ -22,7 +22,8 @@ class CNN(BaseModel):
 
     _KWARGS = [
         'num_classes', 'num_targets',
-        'hexconv', 'conv_kernel_sizes', 'layer_norm', 'last_channels',
+        'hexconv', 'conv_kernel_sizes', 'conv_channels',
+        'layer_norm', 'last_channels',
         'features_encoding_method', 'features_position', 'dense_layer_units',
         'kernel_regularizer_l1', 'kernel_regularizer_l2',
         'activity_regularizer_l1', 'activity_regularizer_l2'
@@ -31,12 +32,14 @@ class CNN(BaseModel):
     def architecture(
             self,
             num_classes=None, num_targets=None, hexconv=False,
-            conv_kernel_sizes=[5, 3, 3], layer_norm=False, last_channels=512,
+            conv_kernel_sizes=[5, 3, 3], conv_channels=[128, 256, 512],
+            layer_norm=False, last_channels=256,
             features_encoding_method='concat', features_position='first',
-            dense_layer_units=[128, 128, 64],
+            dense_layer_units=[128, 128],
             kernel_regularizer_l1=None, kernel_regularizer_l2=None,
             activity_regularizer_l1=None, activity_regularizer_l2=None):
         # Config validation
+        assert len(conv_kernel_sizes) == len(conv_channels)
         assert num_classes is not None or num_targets is not None
         assert self._input_shape.has_image()
         if self._input_shape.has_features():
@@ -47,11 +50,13 @@ class CNN(BaseModel):
         else:
             self.features_encoding_method = None
             self._features_position = None
+
         # Regularizers
         kl1 = kernel_regularizer_l1
         kl2 = kernel_regularizer_l2
         al1 = activity_regularizer_l1
         al2 = activity_regularizer_l2
+
         # Inputs Components
         self._input = []
         self._input_img = layers.InputLayer(
@@ -67,49 +72,55 @@ class CNN(BaseModel):
                 batch_size=self._input_shape.batch_size
             )
             self._input.append(self._input_features)
+
         # Image Branch
         if hexconv:
             self._img_layer = HexConvLayer(filters=64, kernel_size=(3, 3))
         else:
             self._img_layer = layers.Conv2D(
-                filters=64, kernel_size=(3, 3), activation="relu",
+                filters=64, kernel_size=(3, 3), activation='relu',
                 kernel_initializer='he_uniform', padding='valid',
+                use_bias=False,
                 kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-                bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-                activity_regularizer=regularizers.l1_l2(l1=kl1, l2=al2))
+                activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2))
         self._conv_blocks = [
-            ConvBlock(2**(7 + i), k,
+            ConvBlock(filters=f, kernel_size=k,
                       kernel_regularizer_l1=kl1, kernel_regularizer_l2=kl2,
-                      activity_regularizer_l1=kl1, activity_regularizer_l2=al2,
+                      activity_regularizer_l1=al1, activity_regularizer_l2=al2,
                       layer_norm=layer_norm)
-            for i, k in enumerate(conv_kernel_sizes)
+            for k, f in zip(conv_kernel_sizes, conv_channels)
         ]
         self._compress_channels = layers.Conv2D(
-            filters=last_channels, kernel_size=1, activation="relu",
+            filters=last_channels, kernel_size=1, activation='relu',
             kernel_initializer='he_uniform', padding='valid',
             kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
             bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
             activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2)
         )
         self._flatten = layers.Flatten()
+
         # Feature Branch
+        logic_activations = ['relu'] * len(dense_layer_units)
         if self._input_shape.has_features():
+            output_dim_i = 0 if self._features_position == 'first' else -1
+            logic_activations[output_dim_i] = 'tanh'
             if self.features_encoding_method == 'concat':
                 self._features_encoder = layers.Concatenate()
             elif self.features_encoding_method == 'positional_encoding':
                 # _features_position is (fist|last)
-                output_dim_i = 0 if self._features_position == 'first' else -1
                 self._features_encoder = PositionalEncoder(
                     input_dim=self._input_shape.features_shape[1],
                     output_dim=dense_layer_units[output_dim_i]
                 )
             else:
                 ValueError('Invalid "features_encoding_method"', features_encoding_method)  # noqa
+
         # Logic Components
         self._logic_blocks = [
-            (layers.Dense(units), layers.BatchNormalization(), layers.Activation('relu'))  # noqa
-            for units in dense_layer_units
+            (layers.Dense(units), layers.BatchNormalization(), layers.Activation(func))  # noqa
+            for units, func in zip(dense_layer_units, logic_activations)
         ]
+
         # Head Components
         if self.task is Task.REGRESSION:
             self.num_classes = None
@@ -166,7 +177,8 @@ class UmonneModel(BaseModel):
 
     _KWARGS = [
         'num_classes', 'num_targets',
-        'hexconv', 'conv_kernel_sizes', 'layer_norm', 'last_channels',
+        'hexconv', 'conv_kernel_sizes', 'conv_channels',
+        'layer_norm', 'last_channels',
         'features_encoding_method', 'features_position', 'dense_layer_units',
         'upsampling_kernel_sizes',
         'kernel_regularizer_l1', 'kernel_regularizer_l2',
@@ -194,9 +206,10 @@ class UmonneModel(BaseModel):
     def architecture(
             self,
             num_classes=None, num_targets=None, hexconv=False,
-            conv_kernel_sizes=[5, 3, 3], layer_norm=True, last_channels=512,
+            conv_kernel_sizes=[5, 3, 3], conv_channels=[128, 128, 256],
+            layer_norm=True, last_channels=512,
             features_encoding_method='concat', features_position='first',
-            dense_layer_units=[128, 128, 64],
+            dense_layer_units=[128, 128],
             upsampling_kernel_sizes=[3, 3, 3, 3],
             kernel_regularizer_l1=None, kernel_regularizer_l2=None,
             activity_regularizer_l1=None, activity_regularizer_l2=None,
@@ -240,20 +253,20 @@ class UmonneModel(BaseModel):
             self._img_layer = HexConvLayer(filters=64, kernel_size=(3, 3))
         else:
             self._img_layer = layers.Conv2D(
-                filters=64, kernel_size=(3, 3), activation="relu",
+                filters=64, kernel_size=(3, 3), activation='relu',
                 kernel_initializer='he_uniform', padding='valid',
                 kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
                 bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
                 activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2))
         self._conv_blocks = [
-            ConvBlock(2**(7 + i), k,
+            ConvBlock(filters=f, kernel_size=k,
                       kernel_regularizer_l1=kl1, kernel_regularizer_l2=kl2,
                       activity_regularizer_l1=kl1, activity_regularizer_l2=al2,
                       layer_norm=layer_norm)
-            for i, k in enumerate(conv_kernel_sizes)
+            for k, f in zip(conv_kernel_sizes, conv_channels)
         ]
         self._compress_channels = layers.Conv2D(
-            filters=last_channels, kernel_size=1, activation="relu",
+            filters=last_channels, kernel_size=1, activation='relu',
             kernel_initializer='he_uniform', padding='valid',
             kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
             bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
@@ -329,25 +342,25 @@ class UmonneModel(BaseModel):
             [u._kernel_size for u in self._upsampling_blocks], axis=0
         )
 
-    def point_estimation(self, y):
+    def point_estimation(self, outputs):
         """
-        Predict points for a batch of predictions `y_predictions` using
+        Predict points for a batch of predictions `outputs_predictions` using
         `self.point_estimation_mode` method.
         """
         if self.point_estimation_mode == 'expected_value':
-            axis = y.shape[1:]
+            axis = outputs.shape[1:]
             if self.indices is None:
                 self.indices = tf.convert_to_tensor(np.indices(axis), dtype=float)
             axis_ = 'ijkl'[:len(axis)]
-            y_idxs = tf.einsum(f't{axis_},b{axis_}->bt', self.indices, y)
+            outputs_idxs = tf.einsum(f't{axis_},b{axis_}->bt', self.indices, outputs)
         else:
-            y_idxs = None
+            outputs_idxs = None
             raise NotImplementedError(self.point_estimation_mode)
-        old = np.array(y.shape[1:]) - 1
+        old = np.array(outputs.shape[1:]) - 1
         new = self.target_domains
         m = (new[:, 1] - new[:, 0]) / old
         b = new[:, 0]
-        return (m * y_idxs + b)
+        return (m * outputs_idxs + b)
 
 
 @MODEL_REGISTRY.register()
