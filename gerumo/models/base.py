@@ -49,7 +49,7 @@ class LoadableModel:
         self.weights_path = weights
         self._input_shape = input_shape
         self.enable_fit_mode = False
-        self.__model = None
+        self._model = None
 
     @classmethod
     def from_config(cls, cfg, input_shape):
@@ -66,10 +66,10 @@ class LoadableModel:
         return config
 
     def _get_model(self):
-        if self.__model is None:
+        if self._model is None:
             x = [tf.keras.Input(shape=s_i[1:]) for s_i in self._input_shape.get()]
-            self.__model = tf.keras.Model(inputs=[x], outputs=self.call(x))
-        return self.__model
+            self._model = tf.keras.Model(inputs=[x], outputs=self.call(x))
+        return self._model
 
     def summary(self):
         return self._get_model().summary()
@@ -98,10 +98,30 @@ class LoadableModel:
             return Event.list_to_tensor(outputs)
         return outputs
 
-    def postprocess_output(self, outputs, inputs: List[Event]) -> List[Event]:
+    def point_estimation(self, predictions):
+        """Convert the models regression output into a point form.
+        
+        This method is handy for custom output formats like umonne or bmo
+        """
+        return predictions
+
+    def categorical_estimation(self, predictions):
+        """Convert the models regression output into a point form.
+        
+        This method is handy for custom output formats like umonne or bmo
+        """
+        return predictions.argmax(axis=-1).reshape((-1, 1))
+
+    def postprocess_output(self, predictions):
         """Convert keras model's output into list of Events."""
-        # TODO: Convert into a list of Events
-        return outputs
+        if self.task is Task.REGRESSION:
+            # Convert into a vector
+            return self.point_estimation(predictions)
+        elif self.task is Task.CLASSIFICATION:
+            # Convert into categorical
+            return self.categorical_estimation(predictions)
+        else:
+            raise NotImplementedError
 
 
 class BaseModel(LoadableModel, tf.keras.Model):
@@ -126,7 +146,7 @@ class BaseModel(LoadableModel, tf.keras.Model):
         else:
             X = self.preprocess_input(inputs)
             y = self.forward(X, training)
-            return self.postprocess_output(y, X)
+            return self.postprocess_output(y)
 
     @abstractmethod
     def architecture(self, **kwargs):
@@ -165,11 +185,12 @@ class SKLearnModel(LoadableModel, sklearn.base.BaseEstimator):
             outputs = self.encoder.fit_transform(outputs).toarray()
         return outputs
 
-    def postprocess_output(self, outputs) -> List[Event]:
+    def postprocess_output(self, outputs):
         if self.task is Task.CLASSIFICATION:
             # one-hot encoding to categorical
             outputs = outputs.argmax(axis=-1).reshape((-1, 1))
-        return super().postprocess_output(outputs)
+        # return super().postprocess_output(outputs)
+        return outputs
 
     def fit(self, inputs, outputs):
         X = self.preprocess_input(inputs)

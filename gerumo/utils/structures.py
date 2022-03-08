@@ -4,6 +4,7 @@ from enum import IntEnum, unique
 from typing import Any, List, Optional, Tuple, Union, Dict
 from collections import OrderedDict, defaultdict
 
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 import tables
@@ -161,6 +162,18 @@ class Event:
         return np.stack([event.to_tensor(fields) for event in events])
 
     @classmethod
+    def list_to_dataframe(cls, events: List['Event'],
+                          fields: Optional[List[str]] = None) -> pd.DataFrame:
+        events_data = []
+        for event in events:
+            events_data.append({
+                'event_unique_id': event._event_unique_id,
+                'true_energy': event._energy,
+                **event.get_fields()
+            })
+        return pd.DataFrame(events_data)
+
+    @classmethod
     def from_dataframe(cls, event_df: pd.DataFrame,
                        fields: List[str]) -> 'Event':
         event_row = event_df.iloc[0]
@@ -170,6 +183,25 @@ class Event:
             **{field: event_row[field] for field in fields}
         )
         return event
+    
+    def add_prediction(self, prediction: Union[np.ndarray, tf.Tensor], task: Task):
+        if isinstance(prediction, tf.Tensor):
+            prediction = prediction.numpy()
+        if task is Task.REGRESSION:
+            targets = list(self._fields.keys())
+            for target_idx, target_name in enumerate(targets):
+                pred_target = target_name.replace('true', 'pred')
+                self.set(pred_target, prediction[target_idx])
+        elif task is Task.CLASSIFICATION:
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+
+    @classmethod
+    def add_prediction_list(cls, events, predictions: Union[np.ndarray, tf.Tensor], task):
+        for idx in range(len(events)):
+            events[idx].add_prediction(predictions[idx], task)
+        return events
 
 
 class Observations:
@@ -226,7 +258,7 @@ class Observations:
         # Return each image and feature grouped by telescope type
         elif self._mode is ReconstructionMode.STEREO:
             # Select which telecopes return, default is all avaiables.
-            if (telescopes is None):
+            if telescopes is None:
                 telescopes_types = self._availables_telescopes
             else:
                 telescopes_types = [t.type for t in telescopes]
@@ -283,10 +315,10 @@ class Telescope:
     cache_folder = Path(__file__).parent / "pixpos"
 
     geometries_paths = {
-      'LSTCam': '/configuration/instrument/telescope/camera/geometry_LSTCam',
-      'FlashCam': '/configuration/instrument/telescope/camera/geometry_FlashCam',  # noqa
-      'CHEC': '/configuration/instrument/telescope/camera/geometry_CHEC',
-      'NectarCam': '/configuration/instrument/telescope/camera/geometry_NectarCam' # noqa
+        'LSTCam': '/configuration/instrument/telescope/camera/geometry_LSTCam',
+        'FlashCam': '/configuration/instrument/telescope/camera/geometry_FlashCam',  # noqa
+        'CHEC': '/configuration/instrument/telescope/camera/geometry_CHEC',
+        'NectarCam': '/configuration/instrument/telescope/camera/geometry_NectarCam' # noqa
     }
 
     def __init__(self, name, type, camera_type):

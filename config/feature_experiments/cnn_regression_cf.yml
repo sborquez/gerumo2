@@ -19,8 +19,10 @@ MODEL:
     KWARGS:
     - [ hexconv, False]
     - [ num_targets, 2]
-    - [ conv_kernel_sizes, [5, 3, 3, 3]]
-    - [ dense_layer_units, [64, 64]]
+    - [ conv_kernel_sizes, [5, 3, 3]]
+    - [ conv_channels, [128, 256, 512]]
+    - [ last_channels, 256]
+    - [ dense_layer_units, [128, 128]]
     - [ features_encoding_method, concat ]
     - [ features_position, first]
   RECONSTRUCTION_MODE: SINGLE
@@ -47,7 +49,7 @@ OUTPUT:
       - true_alt
 SOLVER:
   BATCH_SIZE: 8
-  EPOCHS: 5
+  EPOCHS: 25
   LOSS:
     CLASS_NAME: MeanAbsoluteError
     CONFIG: []

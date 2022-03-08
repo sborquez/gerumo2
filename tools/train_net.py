@@ -48,7 +48,7 @@ def main(args):
     history = model.fit(
         train_generator,
         epochs=cfg.SOLVER.EPOCHS,
-        verbose=1,
+        verbose=2,
         validation_data=validation_generator,
         validation_steps=len(validation_generator),
         callbacks=callbacks,
@@ -62,7 +62,7 @@ def main(args):
                      save_to=output_dir)
     training_history(history, training_time, cfg.EXPERIMENT_NAME, ylog=True,
                      save_to=output_dir)
-    return history, model
+    return history, model, output_dir
 
 
 if __name__ == '__main__':
@@ -81,4 +81,5 @@ For python-based LazyConfig, use 'path.key=value'.
         nargs=argparse.REMAINDER,
     )
     args = parser.parse_args()
-    main(args)
+    history, model, output_dir = main(args)
+    print(output_dir)
