@@ -68,6 +68,7 @@ class LoadableModel:
     def _get_model(self):
         if self._model is None:
             x = [tf.keras.Input(shape=s_i[1:]) for s_i in self._input_shape.get()]
+            x = x[0] if len(x) == 1 else x
             self._model = tf.keras.Model(inputs=[x], outputs=self.call(x))
         return self._model
 
