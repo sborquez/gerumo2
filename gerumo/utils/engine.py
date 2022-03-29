@@ -117,7 +117,10 @@ def setup_model(model: BaseModel, generator: BaseGenerator, optimizer: optimizer
         loss=loss,
         metrics=metrics
     )
-    model.summary()
+    try:
+        model.summary()
+    except Exception:
+        print('Summary not available')
     return model
 
 

@@ -1,0 +1,60 @@
+EXPERIMENT_NAME: BMO MST Regression
+DATASETS:
+  TRAIN:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_telescopes.parquet
+    FOLDER: null
+  VALIDATION:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_telescopes.parquet
+    FOLDER: null
+  TEST:
+    EVENTS: null
+    TELESCOPES: null
+    FOLDER: null
+MODEL:
+  DEVICE: cuda
+  ARCHITECTURE:
+    NAME: BMO
+    KWARGS:
+    - [ hexconv, False]
+    - [ num_targets, 2]
+    - [ mc_samples, 100]
+    - [ conv_kernel_sizes, [5, 3, 3]]
+    - [ conv_channels, [128, 256, 512]]
+    - [ last_channels, 256]
+    - [ dense_layer_units, [128, 128]]
+    - [ features_encoding_method, concat ]
+    - [ features_position, first]
+  RECONSTRUCTION_MODE: SINGLE
+  TASK: REGRESSION
+  TELESCOPES:
+  - MST
+  WEIGHTS: null
+INPUT:
+  MAPPER:
+    NAME: SimpleSquareImage
+  IMAGE_CHANNELS:
+    - image
+    - peak_time
+    - image_mask
+  TELESCOPE_FEATURES:
+    - pos_x
+    - pos_y
+OUTPUT:
+  MAPPER:
+    NAME: SimpleRegression
+  REGRESSION:
+    TARGETS:
+      - true_az
+      - true_alt
+SOLVER:
+  BATCH_SIZE: 3
+  EPOCHS: 25
+  LOSS:
+    CLASS_NAME: MeanAbsoluteError
+    CONFIG: []
+  OPTIMIZER:
+    CLASS_NAME: Adam
+    CONFIG:
+      - [amsgrad, True]

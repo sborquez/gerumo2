@@ -34,6 +34,12 @@ TELESCOPE_FEATURES = [
     'pos_z',                # z array coordinate
 ] + HILLAS_PARAMETERS
 
+TELESCOPE_TIME_PEAK_MAX = {
+    'LST': 3510.0,
+    'MST': 7687.0,
+    'SST': 11410.0
+}
+
 # Regression Targets
 REGRESSION_TARGETS = ['az', 'alt', 'mc_energy', 'log10_mc_energy']
 REGRESSION_TARGET_UNITS = [u.deg, u.deg, u.TeV, u.TeV]
