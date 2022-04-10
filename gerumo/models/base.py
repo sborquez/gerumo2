@@ -114,7 +114,7 @@ class LoadableModel:
         return predictions.argmax(axis=-1).reshape((-1, 1))
 
     def postprocess_output(self, predictions):
-        """Convert keras model's output into list of Events."""
+        """Convert output tensor into a prediction."""
         if self.task is Task.REGRESSION:
             # Convert into a vector
             return self.point_estimation(predictions)

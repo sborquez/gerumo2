@@ -49,12 +49,12 @@ OUTPUT:
       - true_az
       - true_alt
 SOLVER:
-  BATCH_SIZE: 3
+  BATCH_SIZE: 16
   EPOCHS: 25
   LOSS:
     CLASS_NAME: MeanAbsoluteError
     CONFIG: []
   OPTIMIZER:
-    CLASS_NAME: Adam
+    CLASS_NAME: SGD
     CONFIG:
-      - [amsgrad, True]
+      - [nesterov, True]

@@ -288,6 +288,9 @@ class BMO(CNN):
             output = tf.reshape(output, new_shape)
         return output
 
+    def point_estimation(self, outputs):
+        return tf.reduce_mean(outputs, axis=1)
+
 
 @MODEL_REGISTRY.register()
 class UmonneModel(BaseModel):
