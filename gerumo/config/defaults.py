@@ -106,23 +106,27 @@ _C.SOLVER.EPOCHS = 200
 _C.SOLVER.BASE_LR = 0.001
 # Optimizer for Neural Networks
 _C.SOLVER.OPTIMIZER = CN()
-_C.SOLVER.OPTIMIZER.CLASS_NAME = "RMSprop"
+_C.SOLVER.OPTIMIZER.CLASS_NAME = 'SGD'
 _C.SOLVER.OPTIMIZER.CONFIG = [
-    ('rho', 0.9),
     ('momentum', 0.0),
-    ('epsilon', 1e-07),
-    ('centered', False)
+    ('nesterov', False)
 ]
+# Cyclical Learning rate
+_C.SOLVER.CYCLICAL_LR = CN()
+_C.SOLVER.CYCLICAL_LR.ENABLE = True
+_C.SOLVER.CYCLICAL_LR.MAX_LR = 0.1
+_C.SOLVER.CYCLICAL_LR.FACTOR = 2                # [2, 8]
+_C.SOLVER.CYCLICAL_LR.SCALE_FN = 'fixed_decay'
 # LR Scheduler Exponential Decay
 _C.SOLVER.LR_EXPDECAY = CN()
-_C.SOLVER.LR_EXPDECAY.ENABLE = True
+_C.SOLVER.LR_EXPDECAY.ENABLE = False
 _C.SOLVER.LR_EXPDECAY.DECAY_STEPS = 100000
 _C.SOLVER.LR_EXPDECAY.DECAY_RATE = 0.96
 _C.SOLVER.LR_EXPDECAY.STAIRCASE = True
 # Training Batch size
 # Models Loss
 _C.SOLVER.LOSS = CN()
-_C.SOLVER.LOSS.CLASS_NAME = "MeanAbsoluteError"  # Use loss class name
+_C.SOLVER.LOSS.CLASS_NAME = 'MeanAbsoluteError'  # Use loss class name
 _C.SOLVER.LOSS.CONFIG = []  # [(str, Any), ...]
 # ----------------------------------------------------------------------------
 # Callbacks for NN training
@@ -178,7 +182,7 @@ _C.METRICS.REGRESSION = [
 # ----------------------------------------------------------------------------
 _C.EXPERIMENT_NAME = None
 # Directory where output files are written
-_C.OUTPUT_DIR = "./output"
+_C.OUTPUT_DIR = './output'
 # Set seed to negative to fully randomize everything.
 # Set seed to positive to use a fixed seed. Note that a fixed seed increases
 # reproducibility but does not guarantee fully deterministic behavior.

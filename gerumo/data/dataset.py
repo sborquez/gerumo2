@@ -567,3 +567,18 @@ def aggregate_dataset(dataset, center_az=True, log10_mc_energy=True, hdf5_file=T
         for target, domain in domains.items():
             dataset = dataset[(dataset[target] >= domain[0]) & (dataset[target] <= domain[1])]
     return dataset
+
+
+def apply_cut_to_dataset(dataset: pd.DataFrame, cut: str, threshold: float) -> pd.DataFrame:
+    """Perform cut to dataset.
+
+    Args:
+        dataset (pd.DataFrame): Loaded parquet dataset.
+        cut (str): column to apply cuts.
+        threshold (float): threshold applied to cut.
+
+    Returns:
+        pd.DataFrame: Dataset with applied cuts information.
+    """
+    mask = dataset[cut] > threshold
+    return dataset[mask]

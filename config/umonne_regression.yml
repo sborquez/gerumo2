@@ -46,7 +46,7 @@ OUTPUT:
 SOLVER:
   BATCH_SIZE: 8
   LOSS:
-    CLASS_NAME: sparse_nd_crossentropy
+    CLASS_NAME: sparse_and_crossentropy
     CONFIG: []
   OPTIMIZER:
     CLASS_NAME: Adam
