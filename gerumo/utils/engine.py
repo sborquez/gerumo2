@@ -7,20 +7,24 @@ import logging
 from typing import List, Any, Mapping, Union
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
+import tensorflow_addons as tfa
 from tensorflow.keras import callbacks, metrics, optimizers
 
 from ..config.config import CfgNode, get_cfg
 from ..utils.structures import Task
 from ..data.dataset import load_dataset, aggregate_dataset
 from ..models.losses import build_loss
-from gerumo.models.base import build_model
+from ..models.base import build_model, BaseModel
+from ..data.generators import BaseGenerator
+
 
 build_model = build_model
 build_loss = build_loss
 
 
-def get_dataset_name(cfg, subset):
+def get_dataset_name(cfg: CfgNode, subset: str) -> str:
     if subset == 'test':
         dataset = cfg.DATASETS.TEST.EVENTS
     elif (subset == 'val') or (subset == 'validation'):
@@ -30,7 +34,7 @@ def get_dataset_name(cfg, subset):
     return '_'.join(Path(dataset).name.split('_')[:-1])
 
 
-def setup_cfg(args):
+def setup_cfg(args) -> CfgNode:
     """Load configuration object from cmd arguments."""
     cfg = get_cfg()
     cfg.merge_from_file(args.config_file)
@@ -39,7 +43,7 @@ def setup_cfg(args):
     return cfg
 
 
-def setup_environment(cfg):
+def setup_environment(cfg: CfgNode) -> logging.Logger:
     """Setup device and setup a seed for the environment"""
     # Disable cuda
     if cfg.MODEL.DEVICE == 'cpu':
@@ -76,7 +80,7 @@ def setup_environment(cfg):
     return logging.getLogger('[GERUMO]')
 
 
-def setup_experiment(cfg: CfgNode, training=True) -> Path:
+def setup_experiment(cfg: CfgNode, training: bool = True) -> Path:
     """Setup experiment folders for training or evaluation a model."""
     # Experiment folder
     output_dir = Path(cfg.OUTPUT_DIR).absolute()
@@ -103,7 +107,8 @@ def setup_experiment(cfg: CfgNode, training=True) -> Path:
     return new_output_dir
 
 
-def setup_model(model, generator, optimizer, loss, metrics):
+def setup_model(model: BaseModel, generator: BaseGenerator, optimizer: optimizers.Optimizer,
+                loss: Any, metrics: list) -> BaseModel:
     """Build models defining layers shapes and compile it."""
     X = generator[0][0]
     _ = model(X)
@@ -116,7 +121,7 @@ def setup_model(model, generator, optimizer, loss, metrics):
     return model
 
 
-def load_model(model, generator: Any, output_dir: Union[Path, str], epoch_idx: int = -1):
+def load_model(model: BaseModel, generator: BaseGenerator, output_dir: Union[Path, str], epoch_idx: int = -1):
     """Load model's weights from a checkpoint at given epoch."""
     checkpoints = sorted(list(Path(output_dir).glob('weights/*.h5')))
     if len(checkpoints) == 0:
@@ -134,7 +139,7 @@ def load_model(model, generator: Any, output_dir: Union[Path, str], epoch_idx: i
     return model
 
 
-def build_dataset(cfg: CfgNode, subset: str):
+def build_dataset(cfg: CfgNode, subset: str) -> pd.DataFrame:
     """Load a dataset subset from configuration."""
     # Load dataset subset
     if subset == 'train':
@@ -216,7 +221,7 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
     return callbacks_
 
 
-def build_metrics(cfg: CfgNode, standalone=False) -> Union[List[Union[metrics.Metric, str]], Mapping[str, metrics.Metric]]:
+def build_metrics(cfg: CfgNode, standalone: bool = False) -> Union[List[Union[metrics.Metric, str]], Mapping[str, metrics.Metric]]:
     """Build keras metrics from configuration."""
     metrics_ = []
     names_ = []
@@ -234,8 +239,20 @@ def build_metrics(cfg: CfgNode, standalone=False) -> Union[List[Union[metrics.Me
     return metrics_
 
 
-def build_optimizer(cfg: CfgNode) -> Any:
+def build_optimizer(cfg: CfgNode, steps_per_epoch: int = 1) -> optimizers.Optimizer:
     """Build optimizers for training Neural Networks from configuration."""
+    if cfg.SOLVER.CYCLICAL_LR.ENABLE:
+        scale_functions = {
+            'linear': lambda x: 1,
+            'fixed_decay': lambda x: 1 / (2.0**(x - 1))
+        }
+        lr_scheduler = tfa.optimizers.CyclicalLearningRate(
+            initial_learning_rate=cfg.SOLVER.BASE_LR,
+            maximal_learning_rate=cfg.SOLVER.CYCLICAL_LR.MAX_LR,
+            step_size=cfg.SOLVER.CYCLICAL_LR.FACTOR * steps_per_epoch,
+            scale_fn=scale_functions[cfg.SOLVER.CYCLICAL_LR.SCALE_FN],
+            scale_mode='cycle'
+        )
     if cfg.SOLVER.LR_EXPDECAY.ENABLE:
         lr_scheduler = optimizers.schedules.ExponentialDecay(
             initial_learning_rate=cfg.SOLVER.BASE_LR,

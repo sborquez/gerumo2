@@ -51,6 +51,7 @@ SOLVER:
     CLASS_NAME: MeanAbsoluteError
     CONFIG: []
   OPTIMIZER:
-    CLASS_NAME: Adam
+    CLASS_NAME: SGD
     CONFIG:
-      - [amsgrad, True]
+      - [momentum, 0.0]
+      - [nesterov, false]

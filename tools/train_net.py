@@ -36,7 +36,7 @@ def main(args):
     # Build solver tools
     callbacks = build_callbacks(cfg)
     metrics = build_metrics(cfg)
-    optimizer = build_optimizer(cfg)
+    optimizer = build_optimizer(cfg, len(train_generator))
     loss = build_loss(cfg, output_dim)
     # Compile model
     model = setup_model(model, train_generator, optimizer, loss, metrics)
