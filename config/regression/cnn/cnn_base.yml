@@ -6,7 +6,8 @@ MODEL:
     KWARGS:
     - [ hexconv, False]
     - [ num_targets, 2]
-    - [ conv_kernel_sizes, [5, 3, 3, 3]]
+    - [ conv_kernel_sizes, [5, 3, 3]]
+    - [ conv_channels, [128, 256, 512]]
     - [ dense_layer_units, [64, 64]]
     - [ features_encoding_method, concat ]
     - [ features_position, first]
@@ -21,7 +22,7 @@ INPUT:
     - pos_x
     - pos_y
 SOLVER:
-  BASE_LR: 0.001
+  
   BATCH_SIZE: 8
   LOSS:
     CLASS_NAME: MeanAbsoluteError

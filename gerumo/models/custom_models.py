@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 from sklearn import ensemble
@@ -11,7 +12,7 @@ from sklearn import preprocessing
 from .base import BaseModel, SKLearnModel, MODEL_REGISTRY
 from .layers import (
     ImageNormalizer, HexConvLayer, MCForwardPass, ConvBlock, PositionalEncoder,
-    UpsamplingBlock, DiscreteUncertaintyHead
+    UpsamplingBlock, DeltaRegressionHead, DiscreteUncertaintyHead
 )
 from ..utils.structures import Task, Telescope, InputShape, ReconstructionMode
 from ..config.config import configurable
@@ -28,7 +29,7 @@ class CNN(BaseModel):
         'features_encoding_method', 'features_position', 'dense_layer_units',
         'kernel_regularizer_l1', 'kernel_regularizer_l2',
         'activity_regularizer_l1', 'activity_regularizer_l2',
-        'normalize_charge', 'time_peak_max', 'apply_mask'
+        'normalize_charge', 'time_peak_max', 'apply_mask', 'apply_delta'
     ]
 
     def architecture(
@@ -40,9 +41,10 @@ class CNN(BaseModel):
             dense_layer_units=[128, 128],
             kernel_regularizer_l1=None, kernel_regularizer_l2=None,
             activity_regularizer_l1=None, activity_regularizer_l2=None,
-            normalize_charge=True, time_peak_max=True, apply_mask=True):
+            normalize_charge=True, time_peak_max=True, apply_mask=True,
+            apply_delta=True):
         # Config validation
-        assert len(conv_kernel_sizes) == len(conv_channels)
+        assert len(conv_kernel_sizes) == len(conv_channels), 'Check configuration file.'
         assert num_classes is not None or num_targets is not None
         assert self._input_shape.has_image()
         if self._input_shape.has_features():
@@ -62,13 +64,13 @@ class CNN(BaseModel):
                            last_channels)
         self._feature_branch(dense_layer_units)
         self._logic_components(dense_layer_units)
-        self._head_components(num_targets, num_classes)
+        self._head_components(num_targets, num_classes, apply_delta)
 
     def _input_components(self, normalize_charge, time_peak_max, apply_mask):
         self._input = []
         # Image
         self._input_img = layers.InputLayer(
-            name="images",
+            name='images',
             input_shape=self._input_shape.images_shape[1:],
             batch_size=self._input_shape.batch_size
         )
@@ -84,7 +86,7 @@ class CNN(BaseModel):
         # Features
         if self._input_shape.has_features():
             self._input_features = layers.InputLayer(
-                name="features",
+                name='features',
                 input_shape=self._input_shape.features_shape[1:],
                 batch_size=self._input_shape.batch_size
             )
@@ -142,15 +144,18 @@ class CNN(BaseModel):
             for units, func in zip(dense_layer_units, self.logic_activations)
         ]
 
-    def _head_components(self, num_targets, num_classes):
+    def _head_components(self, num_targets, num_classes, apply_delta=False):
         if self.task is Task.REGRESSION:
             self.num_classes = None
             self.num_targets = num_targets
-            self._head = layers.Dense(num_targets, activation="linear")
+            if apply_delta:
+                self._head = DeltaRegressionHead(num_targets, self.pointing)  # NOTE: Use it only with angular
+            else:
+                self._head = layers.Dense(num_targets, activation='linear')
         elif self.task is Task.CLASSIFICATION:
             self.num_targets = None
             self.num_classes = num_classes
-            self._head = layers.Dense(num_classes, activation="softmax")
+            self._head = layers.Dense(num_classes, activation='softmax')
         else:
             raise NotImplementedError
 
@@ -195,6 +200,10 @@ class CNN(BaseModel):
         else:
             raise NotImplementedError
 
+    def uncertainty(self, y_pred: tf.Tensor):
+        batch_size = y_pred.shape[0]
+        return tf.reshape((), (batch_size, 0))
+
 
 @MODEL_REGISTRY.register()
 class BMO(CNN):
@@ -205,7 +214,7 @@ class BMO(CNN):
         'features_encoding_method', 'features_position', 'dense_layer_units',
         'kernel_regularizer_l1', 'kernel_regularizer_l2',
         'activity_regularizer_l1', 'activity_regularizer_l2',
-        'normalize_charge', 'time_peak_max', 'apply_mask'
+        'normalize_charge', 'time_peak_max', 'apply_mask', 'apply_delta'
     ]
 
     def architecture(
@@ -217,7 +226,8 @@ class BMO(CNN):
             dense_layer_units=[128, 128], mc_dropout_rate=0.3, mc_samples=100,
             kernel_regularizer_l1=None, kernel_regularizer_l2=None,
             activity_regularizer_l1=None, activity_regularizer_l2=None,
-            normalize_charge=True, time_peak_max=True, apply_mask=True):
+            normalize_charge=True, time_peak_max=True, apply_mask=True,
+            apply_delta=True):
         # MC Dropout options
         self.mc_dropout_rate = mc_dropout_rate
         self._mc_samples = mc_samples
@@ -226,7 +236,7 @@ class BMO(CNN):
             layer_norm, last_channels, features_encoding_method, features_position,
             dense_layer_units, kernel_regularizer_l1, kernel_regularizer_l2,
             activity_regularizer_l1, activity_regularizer_l2,
-            normalize_charge, time_peak_max, apply_mask
+            normalize_charge, time_peak_max, apply_mask, apply_delta
         )
 
     def _logic_components(self, dense_layer_units):
@@ -258,7 +268,7 @@ class BMO(CNN):
         front = self._compress_channels(front)
         front = self._flatten(front)
         # Logic
-        if not training:  # MC
+        if not (self.enable_fit_mode or training):  # Monte-Carlo Dropout
             front = self._sampler(front)
             if self._input_shape.has_features():
                 front2 = self._sampler(front2)
@@ -274,7 +284,7 @@ class BMO(CNN):
         for logic_block in self._logic_blocks[1:]:
             dense, bn, mc_do, activation = logic_block
             front = activation(
-                mc_do(bn(dense(front)), training=True)
+                mc_do(bn(dense(front)), training=True)  # Monte-Carlo Dropout
             )
         # Add features at the last layer
         if self._input_shape.has_features() \
@@ -282,7 +292,7 @@ class BMO(CNN):
             front = self._features_encoder([front, front2])
         # Head
         output = self._head(front)
-        if not training:
+        if not (self.enable_fit_mode or training):  # Monte-Carlo Dropout
             shape = tf.shape(output)
             new_shape = tf.concat([[-1], [self._mc_samples], shape[1:]], axis=0)
             output = tf.reshape(output, new_shape)
@@ -290,6 +300,14 @@ class BMO(CNN):
 
     def point_estimation(self, outputs):
         return tf.reduce_mean(outputs, axis=1)
+
+    def compute_variance(self, y_pred: tf.Tensor):
+        """Compute the variance of a Monte-Carlo dropout samples."""
+        return tfp.stats.covariance(y_pred, sample_axis=1)
+
+    def compute_predictive_entropy(self, y_pred: tf.Tensor):
+        """Compute the predictive entropy of a Monte-Carlo dropout samples."""
+        raise NotImplementedError
 
 
 @MODEL_REGISTRY.register()
@@ -356,14 +374,14 @@ class UmonneModel(BaseModel):
         # Inputs Components
         self._input = []
         self._input_img = layers.InputLayer(
-            name="images",
+            name='images',
             input_shape=self._input_shape.images_shape[1:],
             batch_size=self._input_shape.batch_size
         )
         self._input.append(self._input_img)
         if self._input_shape.has_features():
             self._input_features = layers.InputLayer(
-                name="features",
+                name='features',
                 input_shape=self._input_shape.features_shape[1:],
                 batch_size=self._input_shape.batch_size
             )
@@ -509,9 +527,9 @@ class RandomForest(SKLearnModel):
                       weights=None,
                       num_classes=None,
                       n_estimators=100,
-                      criterion="squared_error",  # "gini"
+                      criterion='squared_error',  # 'gini'
                       max_depth=None, min_samples_split=2, min_samples_leaf=1,
-                      min_weight_fraction_leaf=0.0, max_features="auto",
+                      min_weight_fraction_leaf=0.0, max_features='auto',
                       max_leaf_nodes=None, min_impurity_decrease=0.0,
                       bootstrap=True, oob_score=False, n_jobs=None,
                       class_weight=None, ccp_alpha=0.0, max_samples=None

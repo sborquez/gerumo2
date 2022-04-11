@@ -325,6 +325,29 @@ class MCForwardPass(layers.Layer):
         return config
 
 
+class DeltaRegressionHead(layers.Layer):
+    def __init__(self, num_targets, offsets, **kwargs):
+        super(DeltaRegressionHead, self).__init__(**kwargs)
+        self.num_targets = num_targets
+        self.offsets = offsets
+        self._offsets = tf.constant(offsets, shape=(1, num_targets), dtype=tf.float32)
+        self.compute_deltas = layers.Dense(num_targets, activation='linear')
+        self.apply_deltas = layers.Add()
+
+    def call(self, inputs, training=False):
+        deltas = self.compute_deltas(inputs)
+        batch_size = deltas.shape[0]
+        return self.apply_deltas([deltas, tf.broadcast_to(self._offsets, [batch_size, self.num_targets])])
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'num_targets': self.num_targets,
+            'offsets': self.offsets
+        })
+        return config
+
+
 class DiscreteUncertaintyHead(layers.Layer):
     def __init__(self, output_dim, **kwargs):
         """Generate a discrete distribution from n-axis tensor
