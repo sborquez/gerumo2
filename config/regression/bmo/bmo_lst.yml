@@ -1,0 +1,28 @@
+_BASE_: bmo_base.yml
+EXPERIMENT_NAME: BMO LST Regression
+DATASETS:
+  TRAIN:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_telescopes.parquet
+    FOLDER: null
+  VALIDATION:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_telescopes.parquet
+    FOLDER: null
+  TEST:
+    EVENTS: null
+    TELESCOPES: null
+    FOLDER: null
+MODEL:
+  TELESCOPES:
+  - LST
+  WEIGHTS: null
+SOLVER:
+  BASE_LR: 0.001
+  BATCH_SIZE: 8
+  EPOCHS: 25
+  OPTIMIZER:
+    CLASS_NAME: SGD
+    CONFIG:
+      - [momentum, 0.0]
+      - [nesterov, false]
