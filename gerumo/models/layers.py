@@ -10,6 +10,67 @@ from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 
 
+class ImageNormalizer(layers.Layer):
+    def __init__(self, img_shape, normalize_charge=True, time_peak_max=None, apply_mask=True, **kargs):
+        assert img_shape[-1] == 3, 'Only works for 3 channels image (charge, time, masks)'
+        super(ImageNormalizer, self).__init__(**kargs)
+        # Image shape
+        self.img_shape = img_shape
+        # Apply Layer normalization to charge
+        self.charge_split = layers.Lambda(
+            lambda x: tf.reshape(x[:, :, :, 0], (img_shape[0], img_shape[1] * img_shape[2]))
+        )
+        self.normalize_charge = normalize_charge
+        if self.normalize_charge:
+            self.charge_normalization = layers.LayerNormalization(axis=[1])
+        # Apply max scaling to time peak
+        self.time_peak_max = time_peak_max
+        self.time_peak_split = layers.Lambda(lambda x: tf.expand_dims(x[:, :, :, 1], axis=-1))
+        if self.time_peak_max:
+            self.time_peak_normalization = layers.Lambda(lambda x: x / self.time_peak_max)
+
+        self.apply_mask = apply_mask
+        # Apply masking to the others channels using the mask channel
+        self.mask_split = layers.Lambda(lambda x: tf.expand_dims(x[:, :, :, 2], axis=-1))
+        if self.apply_mask:
+            self.masking = layers.Lambda(lambda x: x[0] * x[1])
+        else:
+            self.concatenate_mask = layers.Concatenate(axis=-1)
+        # Concatenate the channels into a single output image
+        self.concatenate = layers.Concatenate(axis=-1)
+
+    def call(self, inputs):
+        # Split channels
+        charge = self.charge_split(inputs)
+        time = self.time_peak_split(inputs)
+        mask = self.mask_split(inputs)
+        # Apply layer normalization
+        if self.normalize_charge:
+            charge = self.charge_normalization(charge)
+        charge = tf.reshape(charge, (self.img_shape[0], self.img_shape[1], self.img_shape[2], 1))
+        # Apply Max scaling
+        if self.time_peak_max is not None:
+            time = self.time_peak_normalization(time)
+        # Concatenate charge and time peaks
+        output = self.concatenate([charge, time])
+        # Apply or concatenate mask
+        if self.apply_mask:
+            output = self.masking((output, mask))
+        else:
+            output = self.concatenate_mask([output, mask])
+        return output
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'img_shape': self.img_shape,
+            'normalize_charge': self.normalize_charge,
+            'time_peak_max': self.time_peak_max,
+            'apply_mask': self.apply_mask
+        })
+        return config
+
+
 class HexConvLayer(layers.Layer):
     def __init__(self, filters, kernel_size=(3, 3), name=None, reshape=None,
                  **kargs):
@@ -45,8 +106,8 @@ class HexConvLayer(layers.Layer):
         cshape = front.get_shape()
         if self.reshape is None:
             self.__reshape = (
-                int(cshape[1])*2, int(cshape[2])//2, int(cshape[3])
-                )
+                int(cshape[1]) * 2, int(cshape[2]) // 2, int(cshape[3])
+            )
             self.reshape = layers.Reshape(self.__reshape)
         front = self.reshape(front)
 
@@ -134,14 +195,14 @@ class ConvBlock(layers.Layer):
 class SinusoidalEncodingNDim(layers.Layer):
     def __init__(self, input_dim, output_dim, const=10000, **kwargs):
         super(SinusoidalEncodingNDim, self).__init__(**kwargs)
-        assert output_dim % (2*input_dim) == 0
+        assert output_dim % (2 * input_dim) == 0
         # Config
         self._input_dim = input_dim
         self._output_dim = output_dim
         self._const = const
         # Layers
-        indices = (2*input_dim)*np.arange(0, np.ceil(output_dim/(2*input_dim)))/output_dim
-        self.inv_freq = np.power(const, -1*indices)
+        indices = (2 * input_dim) * np.arange(0, np.ceil(output_dim / (2 * input_dim))) / output_dim
+        self.inv_freq = np.power(const, -1 * indices)
 
     def call(self, inputs, training=False):
         freq = tf.einsum('ij,k->ijk', inputs, self.inv_freq)
@@ -164,7 +225,7 @@ class SinusoidalEncodingNDim(layers.Layer):
 class PositionalEncoder(layers.Layer):
     def __init__(self, input_dim, output_dim, const=10000, **kwargs):
         super(PositionalEncoder, self).__init__(**kwargs)
-        assert output_dim % (2*input_dim) == 0
+        assert output_dim % (2 * input_dim) == 0
         # Config
         self._input_dim = input_dim
         self._output_dim = output_dim
@@ -196,7 +257,7 @@ class UpsamplingBlock(layers.Layer):
         # Config
         self._output_dim = output_dim
         if output_dim > 1 and isinstance(kernel_size, int):
-            kernel_size = tuple(output_dim*[kernel_size])
+            kernel_size = tuple(output_dim * [kernel_size])
         self._kernel_size = kernel_size
         self._filters = filters
         # Layer builders
@@ -240,6 +301,53 @@ class UpsamplingBlock(layers.Layer):
         return config
 
 
+class MCForwardPass(layers.Layer):
+    def __init__(self, mc_samples, **kwargs):
+        """Generate T MC forward passes
+        """
+        super(MCForwardPass, self).__init__(**kwargs)
+        # Config
+        self._mc_samples = mc_samples
+        self._sampler = layers.RepeatVector(self._mc_samples)
+
+    def call(self, inputs, training=False):
+        shape = tf.shape(inputs)
+        front = self._sampler(inputs)
+        new_shape = tf.concat([shape[:1] * self._mc_samples, shape[1:]], axis=0)
+        front = tf.reshape(front, new_shape)
+        return front
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'mc_samples': self._mc_samples,
+        })
+        return config
+
+
+class DeltaRegressionHead(layers.Layer):
+    def __init__(self, num_targets, offsets, **kwargs):
+        super(DeltaRegressionHead, self).__init__(**kwargs)
+        self.num_targets = num_targets
+        self.offsets = offsets
+        self._offsets = tf.constant(offsets, shape=(1, num_targets), dtype=tf.float32)
+        self.compute_deltas = layers.Dense(num_targets, activation='linear')
+        self.apply_deltas = layers.Add()
+
+    def call(self, inputs, training=False):
+        deltas = self.compute_deltas(inputs)
+        batch_size = deltas.shape[0]
+        return self.apply_deltas([deltas, tf.broadcast_to(self._offsets, [batch_size, self.num_targets])])
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            'num_targets': self.num_targets,
+            'offsets': self.offsets
+        })
+        return config
+
+
 class DiscreteUncertaintyHead(layers.Layer):
     def __init__(self, output_dim, **kwargs):
         """Generate a discrete distribution from n-axis tensor
@@ -272,7 +380,7 @@ class DiscreteUncertaintyHead(layers.Layer):
         the native softmax only supports batch_size x dimension
         """
         max_axis = tf.reduce_max(target, self.axis, keepdims=True)
-        target_exp = tf.exp(target-max_axis)
+        target_exp = tf.exp(target - max_axis)
         normalize = tf.reduce_sum(target_exp, self.axis, keepdims=True)
         softmax = target_exp / normalize
         return softmax

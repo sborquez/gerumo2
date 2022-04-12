@@ -1,3 +1,4 @@
+_BASE_: ../base_simple_regression.yml
 EXPERIMENT_NAME: Random Forest LST REGRESSION
 DATASETS:
   TRAIN:
@@ -32,8 +33,6 @@ MODEL:
       - [n_jobs, -1]
       - [ccp_alpha, 0]
       - [max_samples, null]
-  RECONSTRUCTION_MODE: SINGLE
-  TASK: REGRESSION
   TELESCOPES: 
   - LST 
 INPUT:
@@ -53,6 +52,3 @@ INPUT:
   - hillas_psi
   - hillas_skewness
   - hillas_kurtosis
-OUTPUT:
-  MAPPER:
-    NAME: SimpleRegression

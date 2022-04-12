@@ -1,3 +1,4 @@
+_BASE_: cnn_base.yml
 EXPERIMENT_NAME: CNN LST Regression
 DATASETS:
   TRAIN:
@@ -13,43 +14,13 @@ DATASETS:
     TELESCOPES: null
     FOLDER: null
 MODEL:
-  DEVICE: cuda
-  ARCHITECTURE:
-    NAME: CNN
-    KWARGS:
-    - [ hexconv, False]
-    - [ num_targets, 2]
-    - [ conv_kernel_sizes, [5, 3, 3, 3]]
-    - [ dense_layer_units, [64, 64]]
-    - [ features_encoding_method, concat ]
-    - [ features_position, first]
-  RECONSTRUCTION_MODE: SINGLE
-  TASK: REGRESSION
   TELESCOPES:
   - LST
   WEIGHTS: null
-INPUT:
-  MAPPER:
-    NAME: SimpleSquareImage
-  IMAGE_CHANNELS:
-    - image
-    - peak_time
-    - image_mask
-  TELESCOPE_FEATURES:
-    - pos_x
-    - pos_y
-OUTPUT:
-  MAPPER:
-    NAME: SimpleRegression
-  REGRESSION:
-    TARGETS:
-      - true_az
-      - true_alt
 SOLVER:
+  BASE_LR: 0.001
   BATCH_SIZE: 8
-  LOSS:
-    CLASS_NAME: MeanAbsoluteError
-    CONFIG: []
+  EPOCHS: 25
   OPTIMIZER:
     CLASS_NAME: SGD
     CONFIG:

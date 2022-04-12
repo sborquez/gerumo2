@@ -1,0 +1,39 @@
+_BASE_: ../base_single_regression.yml
+MODEL:
+  DEVICE: cuda
+  ARCHITECTURE:
+    NAME: CNN
+    KWARGS:
+    - [ hexconv, False]
+    - [ num_targets, 2]
+    - [ conv_kernel_sizes, [5, 3, 3]]
+    - [ conv_channels, [128, 256, 512]]
+    - [ dense_layer_units, [64, 64]]
+    - [ features_encoding_method, concat ]
+    - [ features_position, first]
+INPUT:
+  MAPPER:
+    NAME: SimpleSquareImage
+  IMAGE_CHANNELS:
+    - image
+    - peak_time
+    - image_mask
+  TELESCOPE_FEATURES:
+    - pos_x
+    - pos_y
+SOLVER:
+  
+  BATCH_SIZE: 8
+  LOSS:
+    CLASS_NAME: MeanAbsoluteError
+    CONFIG: []
+  OPTIMIZER:
+    CLASS_NAME: SGD
+    CONFIG:
+      - [momentum, 0.0]
+      - [nesterov, false]
+  CYCLICAL_LR:
+    ENABLE: True
+    FACTOR: 2
+    MAX_LR: 0.1
+    SCALE_FN: fixed_decay

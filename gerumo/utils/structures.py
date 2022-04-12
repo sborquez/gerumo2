@@ -2,12 +2,15 @@ from pathlib import Path
 from itertools import repeat
 from enum import IntEnum, unique
 from typing import Any, List, Optional, Tuple, Union, Dict
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 import tables
+
+
+Pointing = namedtuple('Pointing', 'az alt')
 
 
 @unique

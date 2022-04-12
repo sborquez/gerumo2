@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Optional, Union, Any
+from typing import Any, List, Optional, Union
 import logging
 
 import tensorflow as tf
@@ -9,7 +9,7 @@ from fvcore.common.registry import Registry
 from gerumo.data.constants import TELESCOPES
 from ..config.config import configurable
 from ..utils.structures import (
-    Event, InputShape, Observations, ReconstructionMode, Task, Telescope
+    Event, InputShape, Observations, Pointing, ReconstructionMode, Task, Telescope
 )
 
 
@@ -38,13 +38,14 @@ class LoadableModel:
 
     @configurable
     def __init__(self, input_shape: InputShape, mode: ReconstructionMode,
-                 task: Task, telescopes: List[Telescope],
+                 task: Task, telescopes: List[Telescope], pointing: Union[tuple, Pointing],
                  weights: Optional[str] = None, **kwargs):
         super(LoadableModel, self).__init__()
         assert (mode is ReconstructionMode.SINGLE and len(telescopes) == 1) \
             or (mode is ReconstructionMode.STEREO)
         self.mode = mode
         self.task = task
+        self.pointing = pointing
         self.telescopes = telescopes
         self.weights_path = weights
         self._input_shape = input_shape
@@ -58,6 +59,7 @@ class LoadableModel:
             'mode': ReconstructionMode[cfg.MODEL.RECONSTRUCTION_MODE],
             'task': Task[cfg.MODEL.TASK],
             'telescopes': [TELESCOPES[tel] for tel in cfg.MODEL.TELESCOPES],
+            'pointing': Pointing(*cfg.DATASETS.POINTING),
             'weights': cfg.MODEL.WEIGHTS
         }
         config.update({
@@ -84,7 +86,7 @@ class LoadableModel:
     def fit_mode(self):
         self.enable_fit_mode = True
 
-    def verbose_mode(self):
+    def evaluation_mode(self):
         self.enable_fit_mode = False
 
     def preprocess_input(self, inputs: List[Observations]):
@@ -114,7 +116,7 @@ class LoadableModel:
         return predictions.argmax(axis=-1).reshape((-1, 1))
 
     def postprocess_output(self, predictions):
-        """Convert keras model's output into list of Events."""
+        """Convert output tensor into a prediction."""
         if self.task is Task.REGRESSION:
             # Convert into a vector
             return self.point_estimation(predictions)
@@ -131,23 +133,47 @@ class BaseModel(LoadableModel, tf.keras.Model):
 
     @configurable
     def __init__(self, input_shape: InputShape, mode: ReconstructionMode,
-                 task: Task, telescopes: List[Telescope],
+                 task: Task, telescopes: List[Telescope], pointing: Union[tuple, Pointing],
                  weights: Optional[str] = None, **kwargs):
         LoadableModel.__init__(
-            self, input_shape, mode, task, telescopes, weights, **kwargs
+            self, input_shape, mode, task, telescopes, pointing, weights, **kwargs
         )
         tf.keras.Model.__init__(self)
         self.architecture(**kwargs)
 
-    def call(self, inputs: Union[List[Observations], Any], training: bool = False):
+    def call(self, inputs: Union[List[Observations], Any], training: bool = False, uncertainty: bool = False):
         if training or self.enable_fit_mode:
             X = inputs
             y = self.forward(X, training)
+            if uncertainty:
+                logger.warn('Uncertainty can be computed during training.')
             return y
         else:
             X = self.preprocess_input(inputs)
             y = self.forward(X, training)
-            return self.postprocess_output(y)
+            prediction = self.postprocess_output(y)
+            if uncertainty:
+                uncertainty = self.uncertainty(y)
+                return prediction, y, uncertainty
+            return prediction
+    
+    def uncertainty(self, y_pred: tf.Tensor):
+        if self.task is Task.REGRESSION:
+            # Compute Variance
+            return self.compute_variance(y_pred)
+        elif self.task is Task.CLASSIFICATION:
+            # Compute predictive entropy
+            return self.compute_predictive_entropy(y_pred)
+        else:
+            raise NotImplementedError
+    
+    @abstractmethod
+    def compute_variance(self, y_pred: tf.Tensor):
+        pass
+
+    @abstractmethod
+    def compute_predictive_entropy(self, y_pred: tf.Tensor):
+        pass
 
     @abstractmethod
     def architecture(self, **kwargs):

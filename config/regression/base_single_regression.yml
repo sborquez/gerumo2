@@ -1,0 +1,10 @@
+MODEL:
+  RECONSTRUCTION_MODE: SINGLE
+  TASK: REGRESSION
+OUTPUT:
+  MAPPER:
+    NAME: SimpleRegression
+  REGRESSION:
+    TARGETS:
+      - true_az
+      - true_alt

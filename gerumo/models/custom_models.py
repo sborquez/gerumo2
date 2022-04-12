@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 from sklearn import ensemble
@@ -10,11 +11,12 @@ from sklearn import preprocessing
 
 from .base import BaseModel, SKLearnModel, MODEL_REGISTRY
 from .layers import (
-    HexConvLayer, ConvBlock, PositionalEncoder,
-    UpsamplingBlock, DiscreteUncertaintyHead
+    ImageNormalizer, HexConvLayer, MCForwardPass, ConvBlock, PositionalEncoder,
+    UpsamplingBlock, DeltaRegressionHead, DiscreteUncertaintyHead
 )
 from ..utils.structures import Task, Telescope, InputShape, ReconstructionMode
 from ..config.config import configurable
+from ..data.constants import TELESCOPE_TIME_PEAK_MAX
 
 
 @MODEL_REGISTRY.register()
@@ -26,7 +28,8 @@ class CNN(BaseModel):
         'layer_norm', 'last_channels',
         'features_encoding_method', 'features_position', 'dense_layer_units',
         'kernel_regularizer_l1', 'kernel_regularizer_l2',
-        'activity_regularizer_l1', 'activity_regularizer_l2'
+        'activity_regularizer_l1', 'activity_regularizer_l2',
+        'normalize_charge', 'time_peak_max', 'apply_mask', 'apply_delta'
     ]
 
     def architecture(
@@ -37,9 +40,11 @@ class CNN(BaseModel):
             features_encoding_method='concat', features_position='first',
             dense_layer_units=[128, 128],
             kernel_regularizer_l1=None, kernel_regularizer_l2=None,
-            activity_regularizer_l1=None, activity_regularizer_l2=None):
+            activity_regularizer_l1=None, activity_regularizer_l2=None,
+            normalize_charge=True, time_peak_max=True, apply_mask=True,
+            apply_delta=True):
         # Config validation
-        assert len(conv_kernel_sizes) == len(conv_channels)
+        assert len(conv_kernel_sizes) == len(conv_channels), 'Check configuration file.'
         assert num_classes is not None or num_targets is not None
         assert self._input_shape.has_image()
         if self._input_shape.has_features():
@@ -50,30 +55,48 @@ class CNN(BaseModel):
         else:
             self.features_encoding_method = None
             self._features_position = None
+        # Build architecture components
+        self._input_components(normalize_charge, time_peak_max, apply_mask)
+        self._image_branch(hexconv,
+                           kernel_regularizer_l1, kernel_regularizer_l2,
+                           activity_regularizer_l1, activity_regularizer_l2,
+                           conv_kernel_sizes, conv_channels, layer_norm,
+                           last_channels)
+        self._feature_branch(dense_layer_units)
+        self._logic_components(dense_layer_units)
+        self._head_components(num_targets, num_classes, apply_delta)
 
-        # Regularizers
-        kl1 = kernel_regularizer_l1
-        kl2 = kernel_regularizer_l2
-        al1 = activity_regularizer_l1
-        al2 = activity_regularizer_l2
-
-        # Inputs Components
+    def _input_components(self, normalize_charge, time_peak_max, apply_mask):
         self._input = []
+        # Image
         self._input_img = layers.InputLayer(
-            name="images",
+            name='images',
             input_shape=self._input_shape.images_shape[1:],
             batch_size=self._input_shape.batch_size
         )
         self._input.append(self._input_img)
+        if time_peak_max:
+            time_peak_max = TELESCOPE_TIME_PEAK_MAX[self.telescopes[0].type]
+        else:
+            time_peak_max = None
+        self._preprocess_image = ImageNormalizer(
+            self._input_shape.images_shape,
+            normalize_charge, time_peak_max, apply_mask
+        )
+        # Features
         if self._input_shape.has_features():
             self._input_features = layers.InputLayer(
-                name="features",
+                name='features',
                 input_shape=self._input_shape.features_shape[1:],
                 batch_size=self._input_shape.batch_size
             )
             self._input.append(self._input_features)
 
-        # Image Branch
+    def _image_branch(self, hexconv,
+                      kernel_regularizer_l1, kernel_regularizer_l2,
+                      activity_regularizer_l1, activity_regularizer_l2,
+                      conv_kernel_sizes, conv_channels, layer_norm,
+                      last_channels):
         if hexconv:
             self._img_layer = HexConvLayer(filters=64, kernel_size=(3, 3))
         else:
@@ -81,29 +104,29 @@ class CNN(BaseModel):
                 filters=64, kernel_size=(3, 3), activation='relu',
                 kernel_initializer='he_uniform', padding='valid',
                 use_bias=False,
-                kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-                activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2))
+                kernel_regularizer=regularizers.l1_l2(l1=kernel_regularizer_l1, l2=kernel_regularizer_l2),
+                activity_regularizer=regularizers.l1_l2(l1=activity_regularizer_l1, l2=activity_regularizer_l2))
         self._conv_blocks = [
             ConvBlock(filters=f, kernel_size=k,
-                      kernel_regularizer_l1=kl1, kernel_regularizer_l2=kl2,
-                      activity_regularizer_l1=al1, activity_regularizer_l2=al2,
+                      kernel_regularizer_l1=kernel_regularizer_l1, kernel_regularizer_l2=kernel_regularizer_l2,
+                      activity_regularizer_l1=activity_regularizer_l1, activity_regularizer_l2=activity_regularizer_l2,
                       layer_norm=layer_norm)
             for k, f in zip(conv_kernel_sizes, conv_channels)
         ]
         self._compress_channels = layers.Conv2D(
             filters=last_channels, kernel_size=1, activation='relu',
             kernel_initializer='he_uniform', padding='valid',
-            kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-            bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
-            activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2)
+            kernel_regularizer=regularizers.l1_l2(l1=kernel_regularizer_l1, l2=kernel_regularizer_l2),
+            bias_regularizer=regularizers.l1_l2(l1=kernel_regularizer_l1, l2=kernel_regularizer_l2),
+            activity_regularizer=regularizers.l1_l2(l1=activity_regularizer_l1, l2=activity_regularizer_l2)
         )
         self._flatten = layers.Flatten()
-
-        # Feature Branch
-        logic_activations = ['relu'] * len(dense_layer_units)
+    
+    def _feature_branch(self, dense_layer_units):
+        self.logic_activations = ['relu'] * len(dense_layer_units)
         if self._input_shape.has_features():
             output_dim_i = 0 if self._features_position == 'first' else -1
-            logic_activations[output_dim_i] = 'tanh'
+            self.logic_activations[output_dim_i] = 'tanh'
             if self.features_encoding_method == 'concat':
                 self._features_encoder = layers.Concatenate()
             elif self.features_encoding_method == 'positional_encoding':
@@ -113,23 +136,26 @@ class CNN(BaseModel):
                     output_dim=dense_layer_units[output_dim_i]
                 )
             else:
-                ValueError('Invalid "features_encoding_method"', features_encoding_method)  # noqa
+                ValueError('Invalid "features_encoding_method"', self.features_encoding_method)  # noqa
 
-        # Logic Components
+    def _logic_components(self, dense_layer_units):
         self._logic_blocks = [
             (layers.Dense(units), layers.BatchNormalization(), layers.Activation(func))  # noqa
-            for units, func in zip(dense_layer_units, logic_activations)
+            for units, func in zip(dense_layer_units, self.logic_activations)
         ]
 
-        # Head Components
+    def _head_components(self, num_targets, num_classes, apply_delta=False):
         if self.task is Task.REGRESSION:
             self.num_classes = None
             self.num_targets = num_targets
-            self._head = layers.Dense(num_targets, activation="linear")
+            if apply_delta:
+                self._head = DeltaRegressionHead(num_targets, self.pointing)  # NOTE: Use it only with angular
+            else:
+                self._head = layers.Dense(num_targets, activation='linear')
         elif self.task is Task.CLASSIFICATION:
             self.num_targets = None
             self.num_classes = num_classes
-            self._head = layers.Dense(num_classes, activation="softmax")
+            self._head = layers.Dense(num_classes, activation='softmax')
         else:
             raise NotImplementedError
 
@@ -140,6 +166,7 @@ class CNN(BaseModel):
         else:
             img_X = X
         front = self._input_img(img_X)
+        front = self._preprocess_image(front)
         if self._input_shape.has_features():
             front2 = self._input_features(features_X)
         # Encoding
@@ -151,12 +178,14 @@ class CNN(BaseModel):
         # Logic
         dense, bn, activation = self._logic_blocks[0]
         front = activation(bn(dense(front)))
+        # Add features at the first layer
         if self._input_shape.has_features() \
                 and self._features_position == 'first':
             front = self._features_encoder([front, front2])
         for logic_block in self._logic_blocks[1:]:
             dense, bn, activation = logic_block
             front = activation(bn(dense(front)))
+        # Add features at the last layer
         if self._input_shape.has_features() \
                 and self._features_position == 'last':
             front = self._features_encoder([front, front2])
@@ -170,6 +199,115 @@ class CNN(BaseModel):
             return np.array([self.num_classes])
         else:
             raise NotImplementedError
+
+    def uncertainty(self, y_pred: tf.Tensor):
+        batch_size = y_pred.shape[0]
+        return tf.reshape((), (batch_size, 0))
+
+
+@MODEL_REGISTRY.register()
+class BMO(CNN):
+    _KWARGS = [
+        'num_classes', 'num_targets',
+        'hexconv', 'conv_kernel_sizes', 'conv_channels',
+        'layer_norm', 'last_channels', 'mc_dropout_rate', 'mc_samples',
+        'features_encoding_method', 'features_position', 'dense_layer_units',
+        'kernel_regularizer_l1', 'kernel_regularizer_l2',
+        'activity_regularizer_l1', 'activity_regularizer_l2',
+        'normalize_charge', 'time_peak_max', 'apply_mask', 'apply_delta'
+    ]
+
+    def architecture(
+            self,
+            num_classes=None, num_targets=None, hexconv=False,
+            conv_kernel_sizes=[5, 3, 3], conv_channels=[128, 256, 512],
+            layer_norm=False, last_channels=256,
+            features_encoding_method='concat', features_position='first',
+            dense_layer_units=[128, 128], mc_dropout_rate=0.3, mc_samples=100,
+            kernel_regularizer_l1=None, kernel_regularizer_l2=None,
+            activity_regularizer_l1=None, activity_regularizer_l2=None,
+            normalize_charge=True, time_peak_max=True, apply_mask=True,
+            apply_delta=True):
+        # MC Dropout options
+        self.mc_dropout_rate = mc_dropout_rate
+        self._mc_samples = mc_samples
+        super().architecture(
+            num_classes, num_targets, hexconv, conv_kernel_sizes, conv_channels,
+            layer_norm, last_channels, features_encoding_method, features_position,
+            dense_layer_units, kernel_regularizer_l1, kernel_regularizer_l2,
+            activity_regularizer_l1, activity_regularizer_l2,
+            normalize_charge, time_peak_max, apply_mask, apply_delta
+        )
+
+    def _logic_components(self, dense_layer_units):
+        self._sampler = MCForwardPass(self._mc_samples)
+        self._logic_blocks = [
+            (
+                layers.Dense(units),
+                layers.BatchNormalization(),
+                layers.Dropout(rate=self.mc_dropout_rate),
+                layers.Activation(func)
+            )
+            for units, func in zip(dense_layer_units, self.logic_activations)
+        ]
+
+    def forward(self, X, training=False):
+        # Input
+        if self._input_shape.has_features():
+            img_X, features_X = X
+        else:
+            img_X = X
+        front = self._input_img(img_X)
+        front = self._preprocess_image(front)
+        if self._input_shape.has_features():
+            front2 = self._input_features(features_X)
+        # Encoding
+        front = self._img_layer(front)
+        for conv_block in self._conv_blocks:
+            front = conv_block(front, training=training)
+        front = self._compress_channels(front)
+        front = self._flatten(front)
+        # Logic
+        if not (self.enable_fit_mode or training):  # Monte-Carlo Dropout
+            front = self._sampler(front)
+            if self._input_shape.has_features():
+                front2 = self._sampler(front2)
+            
+        dense, bn, mc_do, activation = self._logic_blocks[0]
+        front = activation(
+            mc_do(bn(dense(front)), training=True)
+        )
+        # Add features at the first layer
+        if self._input_shape.has_features() \
+                and self._features_position == 'first':
+            front = self._features_encoder([front, front2])
+        for logic_block in self._logic_blocks[1:]:
+            dense, bn, mc_do, activation = logic_block
+            front = activation(
+                mc_do(bn(dense(front)), training=True)  # Monte-Carlo Dropout
+            )
+        # Add features at the last layer
+        if self._input_shape.has_features() \
+                and self._features_position == 'last':
+            front = self._features_encoder([front, front2])
+        # Head
+        output = self._head(front)
+        if not (self.enable_fit_mode or training):  # Monte-Carlo Dropout
+            shape = tf.shape(output)
+            new_shape = tf.concat([[-1], [self._mc_samples], shape[1:]], axis=0)
+            output = tf.reshape(output, new_shape)
+        return output
+
+    def point_estimation(self, outputs):
+        return tf.reduce_mean(outputs, axis=1)
+
+    def compute_variance(self, y_pred: tf.Tensor):
+        """Compute the variance of a Monte-Carlo dropout samples."""
+        return tfp.stats.covariance(y_pred, sample_axis=1)
+
+    def compute_predictive_entropy(self, y_pred: tf.Tensor):
+        """Compute the predictive entropy of a Monte-Carlo dropout samples."""
+        raise NotImplementedError
 
 
 @MODEL_REGISTRY.register()
@@ -236,14 +374,14 @@ class UmonneModel(BaseModel):
         # Inputs Components
         self._input = []
         self._input_img = layers.InputLayer(
-            name="images",
+            name='images',
             input_shape=self._input_shape.images_shape[1:],
             batch_size=self._input_shape.batch_size
         )
         self._input.append(self._input_img)
         if self._input_shape.has_features():
             self._input_features = layers.InputLayer(
-                name="features",
+                name='features',
                 input_shape=self._input_shape.features_shape[1:],
                 batch_size=self._input_shape.batch_size
             )
@@ -389,9 +527,9 @@ class RandomForest(SKLearnModel):
                       weights=None,
                       num_classes=None,
                       n_estimators=100,
-                      criterion="squared_error",  # "gini"
+                      criterion='squared_error',  # 'gini'
                       max_depth=None, min_samples_split=2, min_samples_leaf=1,
-                      min_weight_fraction_leaf=0.0, max_features="auto",
+                      min_weight_fraction_leaf=0.0, max_features='auto',
                       max_leaf_nodes=None, min_impurity_decrease=0.0,
                       bootstrap=True, oob_score=False, n_jobs=None,
                       class_weight=None, ccp_alpha=0.0, max_samples=None
