@@ -4,10 +4,16 @@ MODEL:
   ARCHITECTURE:
     NAME: UmonneModel
     KWARGS:
-    - ['hexconv', False]
-    - ['num_targets', 2]
-    - ['conv_kernel_sizes', [5, 3, 3, 3]]
-    - ['dense_layer_units', [64, 64]]
+    - [hexconv, false]
+    - [num_targets, 2]
+    - [conv_kernel_sizes, [5, 3, 3]]
+    - [conv_channels,  [64, 128, 128]]
+    - [last_channels, 256]
+    - [layer_norm, false]
+    - [dense_layer_units, [128, 128, 128]]
+    - [normalize_charge, true]
+    - [time_peak_max, true]
+    - [apply_mask, true]
 INPUT:
   MAPPER:
     NAME: SimpleSquareImage
@@ -19,16 +25,17 @@ INPUT:
     - pos_x
     - pos_y
 SOLVER:
-  BASE_LR: 0.001
-  BATCH_SIZE: 8
+  BASE_LR: 0.0001
+  BATCH_SIZE: 64
   LOSS:
     CLASS_NAME: sparse_nd_crossentropy
-    CONFIG: []
+    CONFIG:
+      - [l2_smoothing, 10.0]
   OPTIMIZER:
     CLASS_NAME: SGD
     CONFIG:
-      - [momentum, 0.0]
-      - [nesterov, false]
+      - [momentum, 0.01]
+      - [nesterov, true]
   CYCLICAL_LR:
     ENABLE: True
     FACTOR: 2

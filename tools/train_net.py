@@ -35,7 +35,7 @@ def main(args):
     output_dim = model.get_output_dim()
     # Build solver tools
     callbacks = build_callbacks(cfg)
-    metrics = build_metrics(cfg)
+    metrics = build_metrics(cfg, model=model)
     optimizer = build_optimizer(cfg, len(train_generator))
     loss = build_loss(cfg, output_dim)
     # Compile model
@@ -48,7 +48,7 @@ def main(args):
     history = model.fit(
         train_generator,
         epochs=cfg.SOLVER.EPOCHS,
-        verbose=2,
+        verbose=1 if args.verbose else 2,
         validation_data=validation_generator,
         validation_steps=len(validation_generator),
         callbacks=callbacks,
@@ -69,7 +69,9 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Train a neural network model.')
     parser.add_argument('--config-file', required=True, metavar='FILE',
-                        help='path to config file')
+                        help='Path to config file.')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Enable verbose training.')
     parser.add_argument(
         'opts',
         help="""

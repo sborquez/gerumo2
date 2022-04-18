@@ -1,5 +1,5 @@
 _BASE_: umonne_base.yml
-EXPERIMENT_NAME: UMONNE LST Regression
+EXPERIMENT_NAME: UMONNE SST Regression
 DATASETS:
   TRAIN:
     EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_events.parquet
@@ -15,5 +15,5 @@ DATASETS:
     FOLDER: null
 MODEL:
   TELESCOPES:
-  - LST
+  - SST
   WEIGHTS: null

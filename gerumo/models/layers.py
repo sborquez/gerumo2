@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
+from skimage.draw import disk
 
 
 class ImageNormalizer(layers.Layer):
@@ -32,6 +33,10 @@ class ImageNormalizer(layers.Layer):
         self.apply_mask = apply_mask
         # Apply masking to the others channels using the mask channel
         self.mask_split = layers.Lambda(lambda x: tf.expand_dims(x[:, :, :, 2], axis=-1))
+        self.kernel = self._get_dilation_kernel(size=7)
+        self.mask_dilation = layers.Lambda(
+            lambda x: tf.nn.dilation2d(x, self.kernel, strides=(1,1,1,1), dilations=(1,1,1,1), padding="SAME", data_format='NHWC') - tf.ones_like(x)
+        )
         if self.apply_mask:
             self.masking = layers.Lambda(lambda x: x[0] * x[1])
         else:
@@ -39,11 +44,17 @@ class ImageNormalizer(layers.Layer):
         # Concatenate the channels into a single output image
         self.concatenate = layers.Concatenate(axis=-1)
 
+    def _get_dilation_kernel(self, size):
+        kernel = np.zeros((size, size, 1), dtype=np.float32)
+        rr, cc = disk((size//2, size//2), size/2)
+        kernel[rr, cc] = 1
+
     def call(self, inputs):
         # Split channels
         charge = self.charge_split(inputs)
         time = self.time_peak_split(inputs)
         mask = self.mask_split(inputs)
+        mask = self.mask_dilation(mask)
         # Apply layer normalization
         if self.normalize_charge:
             charge = self.charge_normalization(charge)
@@ -162,7 +173,7 @@ class ConvBlock(layers.Layer):
                 l1=activity_regularizer_l1, l2=activity_regularizer_l2)
         )
         if layer_norm:
-            self._normalization = layers.LayerNormalization()
+            self._normalization = layers.LayerNormalization(axis=(1,2))
         else:
             self._normalization = layers.BatchNormalization()
         self._activation2 = layers.Activation('relu')
@@ -173,7 +184,7 @@ class ConvBlock(layers.Layer):
         x = self._activation1(x)
         x = self._drop(x, training=training)
         x = self._conv2(x)
-        x = self._normalization(x)
+        x = self._normalization(x) if self._layer_norm else self._normalization(x, training=training)
         x = self._activation2(x)
         x = self._maxpool(x)
         return x
@@ -252,7 +263,7 @@ class PositionalEncoder(layers.Layer):
 
 
 class UpsamplingBlock(layers.Layer):
-    def __init__(self, output_dim, kernel_size, filters, **kwargs):
+    def __init__(self, output_dim, kernel_size, filters, layer_norm, **kwargs):
         super(UpsamplingBlock, self).__init__(**kwargs)
         # Config
         self._output_dim = output_dim
@@ -260,36 +271,41 @@ class UpsamplingBlock(layers.Layer):
             kernel_size = tuple(output_dim * [kernel_size])
         self._kernel_size = kernel_size
         self._filters = filters
+        self._layer_norm = layer_norm
         # Layer builders
         if output_dim == 1:
             upsampling = layers.UpSampling1D
             conv = layers.Conv1D
             average = layers.AveragePooling1D
+            axis = 1
         elif output_dim == 2:
             upsampling = layers.UpSampling2D
             conv = layers.Conv2D
             average = layers.AveragePooling2D
+            axis = (1, 2)
         elif output_dim == 3:
             upsampling = layers.UpSampling3D
             conv = layers.Conv3D
             average = layers.AveragePooling3D
+            axis = (1, 2, 3)
         else:
             raise ValueError('output_dim should be in [1,3]')
         # Layers
         self.upsampling = upsampling(size=kernel_size)
         self.average = average(kernel_size, 1, 'same')
         self.conv1 = conv(filters, kernel_size, 1, 'same', activation='relu')
-        self.ln1 = layers.LayerNormalization()
+        self.norm1 = layers.LayerNormalization(axis=axis) if layer_norm else layers.BatchNormalization()
         self.conv2 = conv(filters, kernel_size, 1, 'same', activation='relu')
-        self.ln1 = layers.LayerNormalization()
+        self.norm2 = layers.LayerNormalization(axis=axis) if layer_norm else layers.BatchNormalization()
 
     def call(self, inputs, training=False):
         front = self.upsampling(inputs)
         front = self.average(front)
         front = self.conv1(front)
-        front = self.ln1(front)
+        front = self.norm1(front) if self._layer_norm else self.norm1(front, training=training)
         front = self.conv2(front)
-        return self.ln1(front)
+        front = self.norm2(front) if self._layer_norm else self.norm2(front, training=training)
+        return front
 
     def get_config(self):
         config = super().get_config()
@@ -297,6 +313,7 @@ class UpsamplingBlock(layers.Layer):
             'filters': self._filters,
             'output_dim': self._output_dim,
             'kernel_size': self._kernel_size,
+            'layer_norm': self._layer_norm
         })
         return config
 
@@ -369,26 +386,13 @@ class DiscreteUncertaintyHead(layers.Layer):
             raise ValueError('output_dim should be in [1,3]')
         # Layers
         self.conv = conv(1, 1, strides=1, padding='same')
-
-    def softmax(self, target, name=None):
-        """
-        Adapted from https://gist.github.com/raingo/a5808fe356b8da031837
-
-        Multi dimensional softmax,
-        refer to https://github.com/tensorflow/tensorflow/issues/210
-        compute softmax along the dimension of target
-        the native softmax only supports batch_size x dimension
-        """
-        max_axis = tf.reduce_max(target, self.axis, keepdims=True)
-        target_exp = tf.exp(target - max_axis)
-        normalize = tf.reduce_sum(target_exp, self.axis, keepdims=True)
-        softmax = target_exp / normalize
-        return softmax
-
+        self.softmax = tf.keras.layers.Softmax(axis=self.axis)
+        
     def call(self, inputs, training=False):
         front = self.conv(inputs)
         front = tf.squeeze(front, axis=[-1])
-        return self.softmax(front)
+        front = self.softmax(front)
+        return front
 
     def get_config(self):
         config = super().get_config()

@@ -130,7 +130,9 @@ class LoadableModel:
 class BaseModel(LoadableModel, tf.keras.Model):
 
     _KWARGS = []
-
+    REGRESSION_OUTPUT_TYPE = None
+    CLASSIFICATION_OUTPUT_TYPE = None
+    
     @configurable
     def __init__(self, input_shape: InputShape, mode: ReconstructionMode,
                  task: Task, telescopes: List[Telescope], pointing: Union[tuple, Pointing],

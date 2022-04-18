@@ -8,3 +8,7 @@ OUTPUT:
     TARGETS:
       - true_az
       - true_alt
+METRICS:
+  REGRESSION:
+    - MeanAbsoluteError
+    - MeanAbsolutePercentageError

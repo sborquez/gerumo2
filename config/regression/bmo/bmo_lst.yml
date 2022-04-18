@@ -17,12 +17,3 @@ MODEL:
   TELESCOPES:
   - LST
   WEIGHTS: null
-SOLVER:
-  BASE_LR: 0.001
-  BATCH_SIZE: 8
-  EPOCHS: 25
-  OPTIMIZER:
-    CLASS_NAME: SGD
-    CONFIG:
-      - [momentum, 0.0]
-      - [nesterov, false]
