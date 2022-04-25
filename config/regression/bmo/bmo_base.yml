@@ -25,15 +25,16 @@ INPUT:
     - pos_y
 SOLVER:
   BASE_LR: 0.001
-  BATCH_SIZE: 16
+  BATCH_SIZE: 8
   EPOCHS: 25
   LOSS:
-    CLASS_NAME: MeanAbsoluteError
+    CLASS_NAME: Huber
     CONFIG: []
   OPTIMIZER:
     CLASS_NAME: SGD
     CONFIG:
-      - [nesterov, false]
+      - [momentum, 0.01]
+      - [nesterov, true]
   CYCLICAL_LR:
     ENABLE: True
     FACTOR: 2

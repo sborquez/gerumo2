@@ -37,39 +37,20 @@ def tf_ravel_multi_index(multi_index, dims):
 
 
 @CUSTOM_LOSSES_REGISTRY.register
-def sparse_nd_crossentropy(output_dim, target_domains, **kwargs):
+def sparse_nd_crossentropy(output_dim, target_domains, l2_smoothing=None, **kwargs):
     output_dim_flat = np.prod(output_dim)
     output_dim = tf.convert_to_tensor(output_dim, dtype='float32')
     target_domains = tf.convert_to_tensor(np.array(target_domains), dtype='float32')
-    target_resolutions = (target_domains[:, 1] - target_domains[:, 0])/(output_dim - 1)
+    target_resolutions = (target_domains[:, 1] - target_domains[:, 0]) / (output_dim - 1)
     epsilon = tf.keras.backend.epsilon()
+    l2_smoothing = l2_smoothing or 0.0
 
     def loss(y_true, y_pred):
-        indices_nd = tf.round((y_true - target_domains[:, 0])/target_resolutions)
+        indices_nd = tf.round((y_true - target_domains[:, 0]) / target_resolutions)
         indices_1d = tf_ravel_multi_index(indices_nd, output_dim)
         y_pred_1d = tf.reshape(y_pred, (-1, output_dim_flat))
+        regularizer = tf.reduce_sum(tf.math.square(y_pred_1d))
         y_pred_1d = tf.clip_by_value(y_pred_1d, epsilon, 1 - epsilon)
-        return tf.reduce_sum(tf.keras.losses.sparse_categorical_crossentropy(indices_1d, y_pred_1d))
-    return loss
-
-
-@CUSTOM_LOSSES_REGISTRY.register
-def nd_crossentropy(output_dim, target_domains, **kwargs):
-    """Return the Cross Entropy loss function for multidimension probability map."""
-    axis = [-i for i in range(1, len(output_dim)+1)]
-    epsilon = tf.keras.backend.epsilon()
-    output_dim_flat = np.prod(output_dim)
-    output_dim = tf.convert_to_tensor(output_dim, dtype='float32')
-    target_domains = tf.convert_to_tensor(np.array(target_domains), dtype='float32')
-    target_resolutions = (target_domains[:, 1] - target_domains[:, 0])/(output_dim - 1)
-
-    def loss(y_true, y_pred):
-        """Cross entropy loss function."""
-        # indices_nd = tf.round((y_true - target_domains[:, 0])/target_resolutions)
-        # indices_1d = tf_ravel_multi_index(indices_nd, output_dim)
-        # y_true_ = tf.reshape(tf.zeros_like(y_pred, dtype='float32'), (-1, output_dim_flat))
-        # # y_true_[:, indices_1d] = 1.0
-        # y_true_ = tf.reshape(y_true_, y_pred.shape)
-        y_pred = tf.clip_by_value(y_pred, epsilon, 1 - epsilon)
-        return -tf.reduce_sum(y_pred * tf.math.log(y_pred), axis)
+        ce = tf.reduce_sum(tf.keras.losses.sparse_categorical_crossentropy(indices_1d, y_pred_1d))
+        return ce + l2_smoothing * regularizer
     return loss

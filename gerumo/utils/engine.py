@@ -4,7 +4,7 @@ import random
 from datetime import datetime
 from pathlib import Path
 import logging
-from typing import List, Any, Mapping, Union
+from typing import List, Any, Mapping, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -13,11 +13,11 @@ import tensorflow_addons as tfa
 from tensorflow.keras import callbacks, metrics, optimizers
 
 from ..config.config import CfgNode, get_cfg
-from ..utils.structures import Task
 from ..data.dataset import load_dataset, aggregate_dataset
-from ..models.losses import build_loss
-from ..models.base import build_model, BaseModel
 from ..data.generators import BaseGenerator
+from ..models.base import build_model, BaseModel
+from ..models.losses import build_loss
+from ..utils.structures import Task
 
 
 build_model = build_model
@@ -198,7 +198,10 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
     if cfg.CALLBACKS.TENSORBOARD.ENABLE:
         callbacks_.append(
             callbacks.TensorBoard(
-                log_dir=Path(cfg.OUTPUT_DIR) / 'logs'
+                log_dir=Path(cfg.OUTPUT_DIR) / 'logs',
+                update_freq='batch',
+                write_images=True,
+                histogram_freq=1
             )
         )
     # Periodic checkpoint weights
@@ -224,12 +227,40 @@ def build_callbacks(cfg: CfgNode) -> List[callbacks.Callback]:
     return callbacks_
 
 
-def build_metrics(cfg: CfgNode, standalone: bool = False) -> Union[List[Union[metrics.Metric, str]], Mapping[str, metrics.Metric]]:
+class _MetricWrapper(tf.keras.metrics.Metric):
+    def __init__(self, metric_name, model, *args, **kwargs) -> None:
+        super().__init__(name=metric_name, *args, **kwargs)
+        self.metric = tf.keras.metrics.get(metric_name)
+        self.model = model
+
+    def update_state(self, y_true, y_pred, *args, **kwargs):
+        y_point = self.model.point_estimation(y_pred)
+        self.metric.update_state(y_true, y_point, *args, **kwargs)
+
+    def reset_state(self):
+        self.metric.reset_state()
+        
+    def result(self):
+        return self.metric.result()
+
+
+def _point_estimation_wrapper(cfg, model):
+    if cfg.MODEL.ARCHITECTURE.NAME in ('UmonneModel',):  # Custom wrapper for models with different output
+        def get_wrapper(metric_name):
+            return _MetricWrapper(metric_name, model)
+        return get_wrapper
+    else:
+        return lambda metric_name: metric_name
+
+
+def build_metrics(cfg: CfgNode, standalone: bool = False, model: Optional[BaseModel] = None) -> Union[List[Union[metrics.Metric, str]], Mapping[str, metrics.Metric]]:
     """Build keras metrics from configuration."""
     metrics_ = []
     names_ = []
     if Task[cfg.MODEL.TASK] is Task.REGRESSION:
         metric_list = cfg.METRICS.REGRESSION
+        if model is not None:
+            metric_list = map(_point_estimation_wrapper(cfg, model), metric_list)
     elif Task[cfg.MODEL.TASK] is Task.CLASSIFICATION:
         metric_list = cfg.METRICS.CLASSIFICATION
     for metric in metric_list:
@@ -256,7 +287,7 @@ def build_optimizer(cfg: CfgNode, steps_per_epoch: int = 1) -> optimizers.Optimi
             scale_fn=scale_functions[cfg.SOLVER.CYCLICAL_LR.SCALE_FN],
             scale_mode='cycle'
         )
-    if cfg.SOLVER.LR_EXPDECAY.ENABLE:
+    elif cfg.SOLVER.LR_EXPDECAY.ENABLE:
         lr_scheduler = optimizers.schedules.ExponentialDecay(
             initial_learning_rate=cfg.SOLVER.BASE_LR,
             decay_steps=cfg.SOLVER.LR_EXPDECAY.DECAY_STEPS,

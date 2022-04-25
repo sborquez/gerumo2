@@ -26,6 +26,13 @@ class ReconstructionMode(IntEnum):
     STEREO = 1
 
 
+@unique
+class OutputType(IntEnum):
+    POINT = 0
+    SAMPLES = 1
+    PMF = 2
+
+
 class InputShape:
     def __init__(self, images_shape, features_shape, batch_size=None):
         # self.images_shape = (None, 10, 10, 3)
