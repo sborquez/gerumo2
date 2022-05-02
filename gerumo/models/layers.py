@@ -82,7 +82,7 @@ class ImageNormalizer(layers.Layer):
         return config
 
 
-class ImageNormalizer(layers.Layer):
+class NoDilationImageNormalizer(layers.Layer):
     # Asume que la imagen siempre tiene 3 canales ordenados
     def __init__(self, img_shape, normalize_charge=False, time_peak_max=None, apply_mask=False, **kargs):
         super(ImageNormalizer, self).__init__(**kargs)
