@@ -10,7 +10,7 @@ from sklearn import preprocessing
 
 from .base import BaseModel, SKLearnModel, MODEL_REGISTRY
 from .layers import (
-    ImageNormalizer, HexConvLayer, MCForwardPass, ConvBlock, PositionalEncoder,
+    ImageNormalizer, NoDilationImageNormalizer, HexConvLayer, MCForwardPass, ConvBlock, PositionalEncoder,
     UpsamplingBlock, DeltaRegressionHead, DiscreteUncertaintyHead
 )
 from ..utils.structures import (
