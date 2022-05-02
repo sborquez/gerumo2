@@ -70,7 +70,13 @@ hillas_parameters = [
     'hillas_width_uncertainty',
     'hillas_psi',
     'hillas_skewness',
-    'hillas_kurtosis'
+    'hillas_kurtosis',
+    # Leakage parameters
+    'leakage_pixels_width_1',
+    'leakage_pixels_width_2',
+    'leakage_intensity_width_1',
+    'leakage_intensity_width_2'
+
 ]
 telescope_fieldnames = [
     # Array info
