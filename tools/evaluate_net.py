@@ -51,9 +51,11 @@ def main(args):
     # Evaluation
     start_time = time.time()
     events = []
+    uncertainties = []
     for X, event_true in tqdm(evaluation_generator):
-        y_pred = model(X)
-        events += Event.add_prediction_list(event_true, y_pred, model.task)
+        predictions, _, uncertainty = model(X, uncertainty=True)
+        events += Event.add_prediction_list(event_true, predictions, model.task)
+        uncertainties += [u for u in uncertainty.numpy()]
     evaluation_results = Event.list_to_dataframe(events)
     evaluation_results.to_csv(evaluation_dir / 'results.csv')
     
@@ -72,7 +74,11 @@ def main(args):
         metrics.theta2_distribution(evaluation_results, targets, save_to=evaluation_dir)
     # Classification
     if model.task is Task.CLASSIFICATION:
-        logging.warning('Not implemented, skipped!')
+        # Classification Report
+        labels = evaluation_generator.output_mapper.classes
+        metrics.classification_report(evaluation_results.pred_class_id, evaluation_results.true_class_id, labels=labels, save_to=evaluation_dir)
+        metrics.confusion_matrix(evaluation_results.pred_class_id, evaluation_results.true_class_id, labels=labels, save_to=evaluation_dir)
+
     return evaluation_results, model, evaluation_dir
 
 

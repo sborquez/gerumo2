@@ -668,7 +668,7 @@ class OnionCNN(BaseModel):
         # Image Branch
         self.encoder = tf.keras.Sequential([
             self._input_img,
-            ImageNormalizer(self._input_shape.images_shape, normalize_charge, time_peak_max, apply_mask)
+            NoDilationImageNormalizer(self._input_shape.images_shape, normalize_charge, time_peak_max, apply_mask)
         ])
         if hexconv:
             self.encoder.add(HexConvLayer(filters=64, kernel_size=(3, 3)))
@@ -739,3 +739,7 @@ class OnionCNN(BaseModel):
             return np.array([self.num_classes])
         else:
             raise NotImplementedError
+
+    def compute_predictive_entropy(self, y_pred: tf.Tensor):
+        batch_size = y_pred.shape[0]
+        return tf.reshape((), (batch_size, 0))

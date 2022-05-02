@@ -7,9 +7,11 @@ Generate plot for different metrics of models.
 Here you can find training metrics, single model evaluation
 and models comparison.
 """
+from os.path import join
+
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, classification_report as _classification_report, confusion_matrix as _confusion_matrix, ConfusionMatrixDisplay 
 import ctaplot
 import astropy.units as u
 
@@ -378,3 +380,18 @@ def add_absolute_error_angular(pred_alt, pred_az, true_alt, true_az, bias_correc
     bins = np.linspace(0.001, 2, 50)
     ax = ctaplot.plot_theta2(true_alt, pred_alt, true_az, pred_az, bias_correction, ax, bins=bins)
     return ax
+
+
+def classification_report(pred_id, true_id, labels=None, save_to=None):
+    report = _classification_report(true_id,pred_id, target_names=labels)
+    print(report)
+    if save_to is not None:
+        with open(join(save_to, 'report.txt'), 'w') as f:
+            f.write(report)
+
+
+def confusion_matrix(pred_id, true_id, labels=None, save_to=None):
+    cm = _confusion_matrix(true_id,pred_id)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+    disp.plot()
+    show_or_save(disp.figure_, save_to, title='Confusion Matrix.png')

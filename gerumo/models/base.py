@@ -116,7 +116,7 @@ class LoadableModel:
         
         This method is handy for custom output formats like umonne or bmo
         """
-        return predictions.argmax(axis=-1).reshape((-1, 1))
+        return tf.reshape(tf.math.argmax(predictions, axis=-1), (-1, 1))
 
     def postprocess_output(self, predictions):
         """Convert output tensor into a prediction."""

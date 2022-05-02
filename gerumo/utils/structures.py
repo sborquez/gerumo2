@@ -203,7 +203,10 @@ class Event:
                 pred_target = target_name.replace('true', 'pred')
                 self.set(pred_target, prediction[target_idx])
         elif task is Task.CLASSIFICATION:
-            raise NotImplementedError
+            targets = list(self._fields.keys())
+            for target_idx, target_name in enumerate(targets):
+                pred_target = target_name.replace('true', 'pred')
+                self.set(pred_target, prediction[target_idx])
         else:
             raise NotImplementedError
 
