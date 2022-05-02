@@ -22,3 +22,5 @@ docs/build_*
 tools/output
 notebooks/output
 datasets
+tools/*.out
+tools/machine.file.*

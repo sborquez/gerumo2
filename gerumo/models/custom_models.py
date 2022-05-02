@@ -4,14 +4,13 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras import layers
-from tensorflow.keras import regularizers
+from tensorflow.keras import layers, regularizers, initializers
 from sklearn import ensemble
 from sklearn import preprocessing
 
 from .base import BaseModel, SKLearnModel, MODEL_REGISTRY
 from .layers import (
-    ImageNormalizer, HexConvLayer, MCForwardPass, ConvBlock, PositionalEncoder,
+    ImageNormalizer, NoDilationImageNormalizer, HexConvLayer, MCForwardPass, ConvBlock, PositionalEncoder,
     UpsamplingBlock, DeltaRegressionHead, DiscreteUncertaintyHead
 )
 from ..utils.structures import (
@@ -179,6 +178,7 @@ class CNN(BaseModel):
         if self._input_shape.has_features():
             front2 = self._input_features(features_X)
         # Encoding
+        front = self._norm_img(front)
         front = self._img_layer(front)
         for conv_block in self._conv_blocks:
             front = conv_block(front, training=training)
@@ -615,5 +615,127 @@ class RandomForest(SKLearnModel):
                 ccp_alpha=ccp_alpha,
                 max_samples=max_samples
             )
+        else:
+            raise NotImplementedError
+
+
+@MODEL_REGISTRY.register()
+class OnionCNN(BaseModel):
+
+    _KWARGS = [
+        'num_classes', 'num_targets',
+        'hexconv', 'conv_kernel_sizes', 'layer_norm', 'last_channels',
+        'features_encoding_method', 'features_position', 'dense_layer_units',
+        'kernel_regularizer_l1', 'kernel_regularizer_l2',
+        'activity_regularizer_l1', 'activity_regularizer_l2',
+        'normalize_charge', 'time_peak_max', 'apply_mask'
+    ]
+
+    REGRESSION_OUTPUT_TYPE = OutputType.POINT
+    CLASSIFICATION_OUTPUT_TYPE = OutputType.PMF
+
+    def architecture(
+            self,
+            num_classes=None, num_targets=None, hexconv=False,
+            conv_kernel_sizes=[5, 3, 3], layer_norm=False, last_channels=512,
+            features_encoding_method='concat', features_position='first',
+            dense_layer_units=[128, 128, 64],
+            kernel_regularizer_l1=None, kernel_regularizer_l2=None,
+            activity_regularizer_l1=None, activity_regularizer_l2=None,
+            normalize_charge=False, time_peak_max=None, apply_mask=False):
+        # Config validation
+        assert num_classes is not None or num_targets is not None
+        assert self._input_shape.has_image()
+        if self._input_shape.has_features():
+            assert features_encoding_method in ('concat', 'positional_encoding')
+            assert features_position in ('first', 'last')
+            self.features_encoding_method = features_encoding_method
+            self._features_position = features_position
+        else:
+            self.features_encoding_method = None
+            self._features_position = None
+        # Regularizers
+        kl1 = kernel_regularizer_l1
+        kl2 = kernel_regularizer_l2
+        al1 = activity_regularizer_l1
+        al2 = activity_regularizer_l2
+        # Inputs Components
+        self._input_img = layers.InputLayer(
+            name="images",
+            input_shape=self._input_shape.images_shape[1:],
+            batch_size=self._input_shape.batch_size
+        )
+        # Image Branch
+        self.encoder = tf.keras.Sequential([
+            self._input_img,
+            ImageNormalizer(self._input_shape.images_shape, normalize_charge, time_peak_max, apply_mask)
+        ])
+        if hexconv:
+            self.encoder.add(HexConvLayer(filters=64, kernel_size=(3, 3)))
+        else:
+            self.encoder.add(
+                layers.Conv2D(
+                    filters=64, kernel_size=(3, 3), activation="relu",
+                    kernel_initializer='he_uniform', padding='valid',
+                    kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+                    bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+                    activity_regularizer=regularizers.l1_l2(l1=kl1, l2=al2)
+                )
+            )
+          
+        for i, k in enumerate(conv_kernel_sizes):
+            self.encoder.add(
+                ConvBlock(2**(7 + i), k,
+                      kernel_regularizer_l1=kl1, kernel_regularizer_l2=kl2,
+                      activity_regularizer_l1=kl1, activity_regularizer_l2=al2,
+                      layer_norm=layer_norm)
+            )
+        
+        self.encoder.add(layers.Conv2D(
+            filters=last_channels, kernel_size=1, activation="relu",
+            kernel_initializer='he_uniform', padding='valid',
+            kernel_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+            bias_regularizer=regularizers.l1_l2(l1=kl1, l2=kl2),
+            activity_regularizer=regularizers.l1_l2(l1=al1, l2=al2)
+        ))
+            
+        self.encoder.add(layers.Flatten())
+        
+        # Logic Components
+        last_model = self.encoder
+        self._logic_blocks = []
+        
+        for units in dense_layer_units:
+            self._logic_blocks.append(
+                tf.keras.Sequential([
+                    last_model,
+                    layers.Dense(units),
+                    layers.BatchNormalization(),
+                    layers.Activation('relu')  
+                ])
+            )
+            last_model = self._logic_blocks[-1]
+        # Head Components
+        if self.task is Task.CLASSIFICATION:
+            self.num_targets = None
+            self.num_classes = num_classes
+            self._head = tf.keras.Sequential([
+                last_model,
+                layers.Dense(num_classes, activation="softmax")
+            ])
+        else:
+            raise NotImplementedError
+
+    def forward(self, X, training=False):
+        # Input
+        img_X = X
+        front = self._input_img(img_X)
+        return self._head(front, training=training)
+
+    def get_output_dim(self):
+        if self.task is Task.REGRESSION:
+            return np.array([self.num_targets])
+        elif self.task is Task.CLASSIFICATION:
+            return np.array([self.num_classes])
         else:
             raise NotImplementedError

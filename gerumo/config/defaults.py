@@ -116,7 +116,7 @@ _C.SOLVER.CYCLICAL_LR = CN()
 _C.SOLVER.CYCLICAL_LR.ENABLE = True
 _C.SOLVER.CYCLICAL_LR.MAX_LR = 0.1
 _C.SOLVER.CYCLICAL_LR.FACTOR = 2                # [2, 8]
-_C.SOLVER.CYCLICAL_LR.SCALE_FN = 'fixed_decay'
+_C.SOLVER.CYCLICAL_LR.SCALE_FN = 'fixed_decay'  # linear | fixed_decay
 # LR Scheduler Exponential Decay
 _C.SOLVER.LR_EXPDECAY = CN()
 _C.SOLVER.LR_EXPDECAY.ENABLE = False

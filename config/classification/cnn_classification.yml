@@ -1,12 +1,12 @@
 EXPERIMENT_NAME: CNN LST Classification
 DATASETS:
   TRAIN:
-    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/events
-    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/telescopes
+    EVENTS: null
+    TELESCOPES: null
     FOLDER: null
   VALIDATION:
-    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/events
-    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_tiny/telescopes
+    EVENTS: null
+    TELESCOPES: null
     FOLDER: null
   TEST:
     EVENTS: null
@@ -19,10 +19,7 @@ MODEL:
   ARCHITECTURE:
     NAME: CNN
     KWARGS:
-    - [hexconv, False]
     - [num_classes, 2]
-    - [conv_kernel_sizes, [5, 3, 3, 3]]
-    - [dense_layer_units, [128, 64]]
   RECONSTRUCTION_MODE: SINGLE
   TASK: CLASSIFICATION
   TELESCOPES:

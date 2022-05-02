@@ -493,7 +493,7 @@ def save_dataset(dataset, output_folder, prefix=None):
     event_data = dataset.drop(columns=event_drop)
     event_data = event_data.drop_duplicates()
     # Save events data
-    event_path = "event.parquet" if prefix is None else f"{prefix}_events.parquet"  # noqa E501
+    event_path = "events.parquet" if prefix is None else f"{prefix}_events.parquet"  # noqa E501
     event_path = path.join(output_folder, event_path)
     pq.write_table(pa.Table.from_pandas(event_data), event_path)
     # Save telescopes data
