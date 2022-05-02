@@ -1,12 +1,12 @@
-EXPERIMENT_NAME: CNN LST VGG mod3 20 Epochs Classification
+EXPERIMENT_NAME: CNN LST Classification
 DATASETS:
   TRAIN:
-    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ten_splitted/train_events.parquet
-    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ten_splitted/train_telescopes.parquet
+    EVENTS: null
+    TELESCOPES: null
     FOLDER: null
   VALIDATION:
-    EVENTS: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ten_splitted/validation_events.parquet
-    TELESCOPES: /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_ten_splitted/validation_telescopes.parquet
+    EVENTS: null
+    TELESCOPES: null
     FOLDER: null
   TEST:
     EVENTS: null
@@ -17,7 +17,7 @@ DATASETS:
 MODEL:
   DEVICE: cuda
   ARCHITECTURE:
-    NAME: CustomVGG_mod3
+    NAME: CNN
     KWARGS:
     - [num_classes, 2]
   RECONSTRUCTION_MODE: SINGLE
@@ -34,7 +34,7 @@ INPUT:
     - pos_x
     - pos_y
 SOLVER:
-  BATCH_SIZE: 128
+  BATCH_SIZE: 64
   LOSS:
     CLASS_NAME: SparseCategoricalCrossentropy
     CONFIG: []
@@ -42,7 +42,7 @@ SOLVER:
     CLASS_NAME: Adam
     CONFIG:
       - [amsgrad, True]
-  EPOCHS: 20
+  EPOCHS: 10
 OUTPUT:
   MAPPER:
     NAME: OnevsAllClassification
