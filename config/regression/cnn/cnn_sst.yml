@@ -1,18 +1,5 @@
 _BASE_: cnn_base.yml
 EXPERIMENT_NAME: CNN SST Regression
-DATASETS:
-  TRAIN:
-    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_events.parquet
-    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_telescopes.parquet
-    FOLDER: null
-  VALIDATION:
-    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_events.parquet
-    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_telescopes.parquet
-    FOLDER: null
-  TEST:
-    EVENTS: null
-    TELESCOPES: null
-    FOLDER: null
 MODEL:
   TELESCOPES:
   - SST

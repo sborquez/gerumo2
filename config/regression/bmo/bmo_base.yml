@@ -4,15 +4,33 @@ MODEL:
   ARCHITECTURE:
     NAME: BMO
     KWARGS:
-    - [ hexconv, False]
+    - [ hexconv, false]
     - [ num_targets, 2]
-    - [ mc_samples, 100]
     - [ conv_kernel_sizes, [5, 3, 3]]
     - [ conv_channels, [128, 256, 512]]
-    - [ last_channels, 256]
-    - [ dense_layer_units, [128, 128]]
-    - [ features_encoding_method, concat ]
+    - [ last_channels, 256 ]
+    - [ features_encoding_method, positional_encoding ]
     - [ features_position, first]
+    - [ dense_layer_units, [128, 128, 128]]
+    - [ mc_dropout_rate, 0.3]
+    - [ mc_samples, 100]
+    - [ normalize_charge, false ]
+    - [ time_peak_max, true]
+    - [ apply_mask, true]
+    - [ apply_delta, true]
+DATASETS:
+  TRAIN:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_telescopes.parquet
+    FOLDER: null
+  VALIDATION:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_telescopes.parquet
+    FOLDER: null
+  TEST:
+    EVENTS: null
+    TELESCOPES: null
+    FOLDER: null
 INPUT:
   MAPPER:
     NAME: SimpleSquareImage
@@ -25,8 +43,8 @@ INPUT:
     - pos_y
 SOLVER:
   BASE_LR: 0.001
-  BATCH_SIZE: 8
   EPOCHS: 25
+  BATCH_SIZE: 8
   LOSS:
     CLASS_NAME: Huber
     CONFIG: []

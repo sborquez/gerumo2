@@ -4,16 +4,32 @@ MODEL:
   ARCHITECTURE:
     NAME: UmonneModel
     KWARGS:
-    - [hexconv, false]
-    - [num_targets, 2]
-    - [conv_kernel_sizes, [5, 3, 3]]
-    - [conv_channels,  [64, 128, 128]]
-    - [last_channels, 256]
-    - [layer_norm, false]
-    - [dense_layer_units, [128, 128, 128]]
-    - [normalize_charge, true]
-    - [time_peak_max, true]
-    - [apply_mask, true]
+    - [ hexconv, false]
+    - [ num_targets, 2]
+    - [ conv_kernel_sizes, [5, 3, 3]]
+    - [ conv_channels, [128, 256, 512]]
+    - [ last_channels, 256]
+    - [ features_encoding_method, positional_encoding ]
+    - [ features_position, first]
+    - [ dense_layer_units, [128, 128, 128]]
+    - [ upsampling_kernel_sizes, [3, 3, 3, 3, 3]]
+    - [ normalize_charge, false]
+    - [ time_peak_max, true]
+    - [ apply_mask, true]
+    - [ point_estimation_mode, expected_value]
+DATASETS:
+  TRAIN:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/train_telescopes.parquet
+    FOLDER: null
+  VALIDATION:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_events.parquet
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_telescopes.parquet
+    FOLDER: null
+  TEST:
+    EVENTS: null
+    TELESCOPES: null
+    FOLDER: null
 INPUT:
   MAPPER:
     NAME: SimpleSquareImage

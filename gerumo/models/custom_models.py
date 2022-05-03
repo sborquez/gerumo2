@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras import layers, regularizers, initializers
+from tensorflow.keras import layers, regularizers
 from sklearn import ensemble
 from sklearn import preprocessing
 
@@ -178,7 +178,6 @@ class CNN(BaseModel):
         if self._input_shape.has_features():
             front2 = self._input_features(features_X)
         # Encoding
-        front = self._norm_img(front)
         front = self._img_layer(front)
         for conv_block in self._conv_blocks:
             front = conv_block(front, training=training)
@@ -220,6 +219,7 @@ class CNN(BaseModel):
     def compute_predictive_entropy(self, y_pred: tf.Tensor):
         batch_size = y_pred.shape[0]
         return tf.reshape((), (batch_size, 0))
+
 
 @MODEL_REGISTRY.register()
 class BMO(CNN):
@@ -437,6 +437,7 @@ class UmonneModel(CNN):
         else:
             img_X = X
         front = self._input_img(img_X)
+        front = self._preprocess_image(front)
         if self._input_shape.has_features():
             front2 = self._input_features(features_X)
         # Encoding
@@ -450,6 +451,7 @@ class UmonneModel(CNN):
         front = dense(front)
         front = norm(front) if self._layer_norm else  norm(front, training=training)
         front = activation(front)
+        # Add features at the first layer
         if self._input_shape.has_features() \
                 and self._features_position == 'first':
             front = self._features_encoder([front, front2])
@@ -458,6 +460,7 @@ class UmonneModel(CNN):
             front = dense(front)
             front = norm(front) if self._layer_norm else  norm(front, training=training)
             front = activation(front)
+        # Add features at the last layer
         if self._input_shape.has_features() \
                 and self._features_position == 'last':
             front = self._features_encoder([front, front2])

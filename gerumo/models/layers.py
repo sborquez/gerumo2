@@ -48,6 +48,7 @@ class ImageNormalizer(layers.Layer):
         kernel = np.zeros((size, size, 1), dtype=np.float32)
         rr, cc = disk((size//2, size//2), size/2)
         kernel[rr, cc] = 1
+        return tf.constant(kernel)
 
     def call(self, inputs):
         # Split channels
@@ -398,12 +399,10 @@ class DeltaRegressionHead(layers.Layer):
         self.offsets = offsets
         self._offsets = tf.constant(offsets, shape=(1, num_targets), dtype=tf.float32)
         self.compute_deltas = layers.Dense(num_targets, activation='linear')
-        self.apply_deltas = layers.Add()
 
     def call(self, inputs, training=False):
         deltas = self.compute_deltas(inputs)
-        batch_size = deltas.shape[0]
-        return self.apply_deltas([deltas, tf.broadcast_to(self._offsets, [batch_size, self.num_targets])])
+        return tf.math.add(deltas, self._offsets)
 
     def get_config(self):
         config = super().get_config()
