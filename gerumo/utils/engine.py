@@ -126,12 +126,17 @@ def setup_model(model: BaseModel, generator: BaseGenerator, optimizer: optimizer
 
 def load_model(model: BaseModel, generator: BaseGenerator, output_dir: Union[Path, str], epoch_idx: int = -1):
     """Load model's weights from a checkpoint at given epoch."""
-    checkpoints = sorted(list(Path(output_dir).glob('weights/*.h5')))
-    if len(checkpoints) == 0:
-        raise ValueError('Model doesn`t have checkpoints')
-    if epoch_idx >= 0 and len(checkpoints) <= epoch_idx:
-        raise ValueError(f'Epoch_idx should be in [0, {len(checkpoints)}) or -1: {epoch_idx}')
-    checkpoint = checkpoints[epoch_idx]
+    if os.path.isdir(output_dir):
+        checkpoints = sorted(list(Path(output_dir).glob('weights/*.h5')))
+        if len(checkpoints) == 0:
+            raise ValueError('Model doesn`t have checkpoints')
+        if epoch_idx >= 0 and len(checkpoints) <= epoch_idx:
+            raise ValueError(f'Epoch_idx should be in [0, {len(checkpoints)}) or -1: {epoch_idx}')
+        checkpoint = checkpoints[epoch_idx]
+    elif os.path.isfile(output_dir) and output_dir.endswith('.h5'):
+        checkpoint = output_dir
+    else:
+        raise ValueError('output_dir is not a folder or a checkpoint', output_dir)
     X = generator[0][0]
     _ = model(X)
     try:
