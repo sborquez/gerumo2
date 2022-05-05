@@ -30,9 +30,9 @@ def main(args):
     # Load evaluation dataset
     # Setup evaluation datasets directory
     if args.use_validation:
-        evaluation_dataset_name = get_dataset_name(cfg, 'validation')
+        evaluation_dataset_name = 'validation'
     else:
-        evaluation_dataset_name = get_dataset_name(cfg, 'test')
+        evaluation_dataset_name = 'test'
     evaluation_dir = evaluation_dir / evaluation_dataset_name
     evaluation_dir.mkdir(exist_ok=True)
     # Build evaluation dataset
