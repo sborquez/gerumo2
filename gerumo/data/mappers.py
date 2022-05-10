@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List
+from typing import List, Optional
 import numpy as np
 import pandas as pd
 import tables
@@ -23,12 +23,12 @@ The call is expected to return an :class:`InputMapper`.
 """
 
 
-def build_input_mapper(cfg) -> 'InputMapper':
+def build_input_mapper(cfg, ensemble: bool = False) -> 'InputMapper':
     """
     Build InputMapper defined by `cfg.INPUT.MAPPER.NAME`.
     """
     name = cfg.INPUT.MAPPER.NAME
-    return INPUT_MAPPER_REGISTRY.get(name)(cfg)
+    return INPUT_MAPPER_REGISTRY.get(name)(cfg, ensemble)
 
 
 class InputMapper:
@@ -85,24 +85,35 @@ class SimpleSquareImage(InputMapper):
     """
     Transform raw format to one square matrix.
     """
-    _KWARGS = []
+    _KWARGS = [
+        'include_hillas_parameters'
+    ]
 
     @configurable
     def __init__(self, image_channels: List[str],
                  telescope_features: List[str],
-                 mode: ReconstructionMode) -> None:
+                 mode: ReconstructionMode,
+                 include_hillas_parameters: Optional[List[str]] = None) -> None:
         super().__init__(image_channels, telescope_features, mode)
+        self._include_hillas_parameters = include_hillas_parameters
 
     @classmethod
-    def from_config(cls, cfg):
+    def from_config(cls, cfg, ensemble: bool = False):
         image_channels = cfg.INPUT.IMAGE_CHANNELS
         telescope_features = cfg.INPUT.TELESCOPE_FEATURES
-        reconstruction_mode = cfg.MODEL.RECONSTRUCTION_MODE
-        return {
+        if ensemble:
+            reconstruction_mode = cfg.ENSEMBLER.RECONSTRUCTION_MODE
+        else:
+            reconstruction_mode = cfg.MODEL.RECONSTRUCTION_MODE
+        config = {
             'image_channels': image_channels,
             'telescope_features': telescope_features,
             'mode': ReconstructionMode[reconstruction_mode]
         }
+        config.update({
+            k: v for k, v in cfg.INPUT.MAPPER.KWARGS if k in cls._KWARGS
+        })
+        return config
 
     def get_input_shape(self) -> InputShape:
         raise NotImplementedError
@@ -132,6 +143,7 @@ class SimpleSquareImage(InputMapper):
         telescopes = []
         images = [] if len(self.image_channels) else None
         features = [] if len(self.telescope_features) else None
+        hillas_parameters = [] if self._include_hillas_parameters is not None else None
         for _, event_row in event_df.iterrows():
             telescope = TELESCOPES[event_row.type]
             telescopes.append(telescope)
@@ -148,6 +160,10 @@ class SimpleSquareImage(InputMapper):
                 features.append(
                     event_row[self.telescope_features].values.astype(float)
                 )
+            if self._include_hillas_parameters is not None:
+                hillas_parameters.append(
+                    dict(event_row[self._include_hillas_parameters])
+                )
         observations = Observations(
             event_unique_id=event_unique_id,
             mode=self.mode,
@@ -155,7 +171,8 @@ class SimpleSquareImage(InputMapper):
             features_names=self.telescope_features,
             channels_names=self.image_channels,
             images=images,
-            features=features
+            features=features,
+            hillas_parameters=hillas_parameters
         )
         return observations
 

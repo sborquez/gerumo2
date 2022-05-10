@@ -212,11 +212,11 @@ class CNN(BaseModel):
         else:
             raise NotImplementedError
 
-    def compute_variance(self, y_pred: tf.Tensor):
+    def compute_variance(self, y_pred: tf.Tensor) -> tf.Tensor:
         batch_size = y_pred.shape[0]
         return tf.reshape((), (batch_size, 0))
 
-    def compute_predictive_entropy(self, y_pred: tf.Tensor):
+    def compute_predictive_entropy(self, y_pred: tf.Tensor) -> tf.Tensor:
         batch_size = y_pred.shape[0]
         return tf.reshape((), (batch_size, 0))
 

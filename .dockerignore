@@ -3,10 +3,11 @@
 *-workspace
 refactor.md
 
-# Notebooks
+# Outputs
 notebooks/.ipynb_checkpoints
 notebooks/output
 notebooks/sandbox.ipynb
+tools/output
 
 # Datasets
 datasets

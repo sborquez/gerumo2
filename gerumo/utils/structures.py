@@ -231,7 +231,8 @@ class Observations:
                  features_names: List[str],
                  channels_names: List[str],
                  images: Optional[List[np.ndarray]] = None,
-                 features: Optional[List[np.ndarray]] = None) -> None:
+                 features: Optional[List[np.ndarray]] = None,
+                 hillas_parameters: Optional[List[dict]] = None) -> None:
         assert len(telescopes) > 0
         assert not ((mode is ReconstructionMode.SINGLE) and (len(telescopes) > 1))  # noqa
         assert (images is not None) or (features is not None)
@@ -245,6 +246,7 @@ class Observations:
         self._availables_telescopes = list(self._obs_by_telescopes.keys())
         self.images = images or list(repeat(None, len(telescopes)))
         self.features = features or list(repeat(None, len(telescopes)))
+        self._hillas_parameters = hillas_parameters or list(repeat({}, len(telescopes)))
 
     def __repr__(self) -> str:
         desc = f'Observations(id={self._event_unique_id}, '
@@ -270,7 +272,7 @@ class Observations:
             return self[0]
         # Return each image and feature grouped by telescope type
         elif self._mode is ReconstructionMode.STEREO:
-            # Select which telecopes return, default is all avaiables.
+            # Select which telecopes return, default is all availables.
             if telescopes is None:
                 telescopes_types = self._availables_telescopes
             else:
@@ -278,10 +280,14 @@ class Observations:
             # Group by telescope type
             obs_by_telescope = {}
             for telescope_type in telescopes_types:
-                obs_by_telescope[telescope_type] = [
+                obs_by_telescope[telescope_type] = None
+            for telescope_type in self._availables_telescopes:
+                # Stacking observations from the same telescope type
+                obs_tensors = tuple(zip(*[
                     self[idx]
                     for idx in self._obs_by_telescopes[telescope_type]
-                ]
+                ]))
+                obs_by_telescope[telescope_type] = tuple(np.stack(obs_tensor) for obs_tensor in obs_tensors)
             return obs_by_telescope
 
     @classmethod
@@ -289,12 +295,15 @@ class Observations:
                        telescopes: Optional[List['Telescope']] = None):
         # Return only one image an features
         if mode is ReconstructionMode.SINGLE:
+            # Stacking observations into a batch
             obs_tensors = tuple(zip(*[obs.to_tensor() for obs in observations]))  # noqa
             if len(obs_tensors) == 1:
                 return np.stack(obs_tensors[0])
             return tuple(np.stack(obs_tensor) for obs_tensor in obs_tensors)
         else:
-            raise NotImplementedError
+            return [
+                observation.to_tensor(telescopes) for observation in observations
+            ]
 
     @property
     def shape(self) -> str:
@@ -313,7 +322,21 @@ class Observations:
         return self._features_names
 
     @property
-    def n_observations(self) -> Union[int, Dict[str, int]]:
+    def hillas_parameters(self) -> Union[List[dict], Dict['Telescope', List[dict]]]:
+        # Return only one 
+        if self.mode is ReconstructionMode.SINGLE:
+            # Stacking observations into a batch
+            return self._hillas_parameters[0]
+        else:
+            hillas_parameters_by_telescope = {}
+            for telescope_type in self._availables_telescopes:
+                hillas_parameters_by_telescope[telescope_type] = [
+                    self._hillas_parameters[idx] for idx in self._obs_by_telescopes[telescope_type]
+                ]
+            return hillas_parameters_by_telescope
+
+    @property
+    def n_observations(self) -> Union[int, Dict['Telescope', int]]:
         if self.mode is ReconstructionMode.SINGLE:
             return 1
         else:
@@ -344,8 +367,19 @@ class Telescope:
         if self._cache_file.with_suffix(".npy").exists():
             self.set_geometry_from_cache()
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.type == other
+        elif isinstance(other, type(self)):
+            return self.description == other.description
+        else:
+            raise ValueError(other)
+    
     def __repr__(self) -> str:
-        return str(self)[:-2] + f"(id={id(self)})"
+        return str(self)[:-2]
+
+    def __hash__(self) -> int:
+        return hash(self.type)
 
     def __str__(self) -> str:
         return "Telescope." + "_".join(self.description) + "()"

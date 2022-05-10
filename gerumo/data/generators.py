@@ -225,6 +225,103 @@ class OneBatchMonoGenerator(MonoGenerator):
         return self[0]
 
 
-# @GENERATOR_REGISTRY.register()
-# class MultiStereoGenerator(BaseGenerator):
-#     pass
+@GENERATOR_REGISTRY.register()
+class MultiStereoGenerator(BaseGenerator):
+
+    @configurable
+    def __init__(self,
+                 dataset: pd.DataFrame,
+                 telescopes: List[Telescope],
+                 # batch_size: int,
+                 input_mapper: InputMapper,
+                 output_mapper: OutputMapper,
+                 shuffle: bool = True,
+                 strict_shuffle: bool = False) -> None:
+        mask = np.zeros(len(dataset), dtype=bool)
+        for telescope in telescopes:
+            mask = np.logical_or(
+                mask,
+                np.logical_and.reduce(
+                    dataset[['name', 'type', 'camera_type']] == telescope.description,
+                    axis=1
+                )
+            )
+        dataset = dataset[mask]
+        super().__init__(
+            dataset, 1, input_mapper, output_mapper, shuffle
+        )
+        self.dataset_by_events = dataset.groupby('event_unique_id')
+        self.events = list(self.dataset_by_events.groups)
+        self.size = len(self.dataset_by_events)
+        self.length = len(self.dataset_by_events)
+        self.indexes = np.arange(self.size)
+        self.strict_shuffle = strict_shuffle
+        self.telescopes = telescopes
+        self.on_epoch_end()
+
+    @classmethod
+    def from_config(cls, cfg, dataset):
+        return {
+            'dataset': dataset, 
+            'telescopes': [TELESCOPES[telescope] for telescope in cfg.ENSEMBLER.TELESCOPES],
+            'input_mapper': build_input_mapper(cfg, ensemble=True),
+            'output_mapper': build_output_mapper(cfg),
+            'shuffle': cfg.GENERATOR.ENABLE_SHUFFLE,
+            'strict_shuffle': cfg.GENERATOR.USE_STRICT_SHUFFLE,
+        }
+
+    def to_tensors(self, observations, events):
+        observations = Observations.list_to_tensor(
+            ReconstructionMode.STEREO, observations
+        )
+        events = Event.list_to_tensor(events)
+        return observations, events
+
+    def get_input_shape(self) -> Union[InputShape, Any]:
+        input_shapes = {}
+        _defaults = {
+            'SST': (48, 48),
+            'MST': (84, 28),
+            'LST': (55, 47)
+        }
+        for telescope in self.telescopes:
+            telescope_type = telescope.type
+            images_shape, features_shape = None, None
+            # it has image
+            if self.input_mapper.image_channels:
+                # image is always the first input
+                n_channels = len(self.input_mapper.image_channels)
+                image_size = _defaults[telescope_type]
+                images_shape = (-1, *image_size, n_channels)
+            # it has features
+            if self.input_mapper.telescope_features:
+                # image is always the last input
+                n_features = len(self.input_mapper.telescope_features)
+                features_shape = (-1, n_features)
+            input_shape = InputShape(images_shape, features_shape)
+            input_shapes[telescope] = input_shape
+        return input_shapes
+
+    def on_epoch_end(self) -> np.ndarray:
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(self.size)
+        if self.shuffle:
+            if self.strict_shuffle:
+                raise NotImplementedError
+            else:
+                np.random.shuffle(self.indexes)
+        return self.indexes
+
+    def _data_generation(self,
+                         list_indexes: np.ndarray
+                         ) -> Tuple[List[Observations], List[Event]]:
+        'Generates data containing batch_size samples'
+        event_idx = list_indexes[0]
+        event = self.events[event_idx]
+        event_df = self.dataset_by_events.get_group(event)
+        
+        batch_observations = [self.input_mapper(event_df)]
+        batch_events = [self.output_mapper(event_df)]
+ 
+        return (batch_observations, batch_events)
+
