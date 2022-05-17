@@ -61,16 +61,49 @@ export LD_LIBRARY_PATH=/home/ir-riqu1/TensorRT/TensorRT-6.0.1.5/lib:$LD_LIBRARY_
 #! Full path to application executable:
 rds_dir="$HOME/rds/rds-iris-ip007"
 gerumo_dir="$HOME/gerumo2"
-singularity_sif="$HOME/rds/rds-iris-ip007/ir-borq1/gerumo2-fixed.sif"
-script="$gerumo_dir/tools/train_net.py"
+singularity_sif="$HOME/rds/rds-iris-ip007/ir-borq1/gerumo2-fixed2.sif"
+script="$gerumo_dir/tools/evaluate_net.py"
 application="singularity exec --nv $singularity_sif python $script"
 
 #! Run options for the application:
 if [ -z "$experiment" ];
 then
-    options="--config-file /home/ir-borq1/experiments/grid_search/umonne/N_ADAM_B3_M2_I8_C2_D4.yml"
+    options="--config-file "
 else
     options="--config-file $experiment"
+fi
+
+if [ -z "$dataset" ];
+then
+    options="$options"
+else
+    case $dataset in
+        test_gm_full)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd/telescopes"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+
+        test_gm_cut1000)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd_cut1000/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd_cut1000/telescopes"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+
+        test_g_full)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g/telescopes"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+
+        test_g_cut1000)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g_cut1000/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g_cut1000/telescopes"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+    esac
+    opts="DATASETS.TEST.EVENTS $events DATASETS.TEST.TELESCOPES $telescopes DATASETS.TEST.FOLDER $data_folder"
+    options="$options --dataset_name $dataset $opts"
 fi
 
 #! Work directory (i.e. where the job will run):
