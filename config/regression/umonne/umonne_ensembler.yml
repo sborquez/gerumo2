@@ -1,0 +1,59 @@
+EXPERIMENT_NAME: UMONNE Ensembler Regression
+DATASETS:
+  AGGREGATION:
+    CENTER_AZ: true
+    HDF5_FILEPATH: true
+    IGNORE_BY_DOMAINS: true
+    IGNORE_PARTICLE_TYPES: []
+    LOG10_ENERGY: true
+    REMOVE_NAN: true
+  POINTING:
+  - 0
+  - 70
+  TEST:
+    EVENTS: null
+    FOLDER: null
+    TELESCOPES: null
+  VALIDATION:
+    EVENTS: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_events.parquet
+    FOLDER: null
+    TELESCOPES: /home/asuka/projects/gerumo2/datasets/gamma_sample/splits/validation_telescopes.parquet
+ENSEMBLER:
+  NAME: Umonne
+  TELESCOPES:
+  - LST
+  - MST
+  - SST
+  ARCHITECTURES:
+  - /home/asuka/projects/gerumo2/config/regression/umonne/umonne_lst.yml
+  - /home/asuka/projects/gerumo2/config/regression/umonne/umonne_mst.yml
+  - /home/asuka/projects/gerumo2/config/regression/umonne/umonne_sst.yml
+  WEIGHTS:
+  -
+  - 
+  -
+  DEVICE: cuda
+  RECONSTRUCTION_MODE: STEREO
+  TASK: REGRESSION
+GENERATOR:
+  ENABLE_SHUFFLE: false
+  NAME: MultiStereoGenerator
+  NUM_WORKERS: 1
+  USE_STRICT_SHUFFLE: false
+INPUT:
+  IMAGE_CHANNELS: [image, peak_time, image_mask]
+  MAPPER:
+    KWARGS: []
+    NAME: SimpleSquareImage
+  TELESCOPE_FEATURES: [pos_x, pos_y]
+METRICS:
+  REGRESSION: [MeanAbsoluteError, MeanAbsolutePercentageError]
+OUTPUT:
+  MAPPER:
+    NAME: SimpleRegression
+  REGRESSION:
+    TARGETS: [true_az, true_alt]
+    TARGETS_DOMAINS: [[-30, 30], [60, 80]]
+OUTPUT_DIR: /home/asuka/projects/gerumo2/tools/output/umonne_ensemble
+SEED: -1
+VERSION: 1

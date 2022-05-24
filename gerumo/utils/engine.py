@@ -80,12 +80,15 @@ def setup_environment(cfg: CfgNode) -> logging.Logger:
     return logging.getLogger('[GERUMO]')
 
 
-def setup_experiment(cfg: CfgNode, training: bool = True) -> Path:
+def setup_experiment(cfg: CfgNode, training: bool = True, ensemble: bool=False) -> Path:
     """Setup experiment folders for training or evaluation a model."""
     # Experiment folder
     output_dir = Path(cfg.OUTPUT_DIR).absolute()
     # Evaluation
-    if not training:
+    if ensemble:
+        output_dir.mkdir(exist_ok=True)
+        return output_dir
+    elif not training:
         if not output_dir.exists:
             raise ValueError(f'{output_dir} does not exist.')
         evaluation_dir = output_dir / 'evaluation'

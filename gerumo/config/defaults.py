@@ -27,6 +27,8 @@ _C.ENSEMBLER.NAME = "IntensityWeightedAverage"
 _C.ENSEMBLER.TELESCOPES = []    # Telescope {type}_{camera_type}
 _C.ENSEMBLER.ARCHITECTURES = []  # Checkpoint with architecture files
 _C.ENSEMBLER.WEIGHTS = []       # Only weights checkpoint files
+_C.ENSEMBLER.RECONSTRUCTION_MODE = ReconstructionMode.STEREO.name
+_C.ENSEMBLER.TASK = Task.REGRESSION.name
 # -----------------------------------------------------------------------------
 # Dataset
 # -----------------------------------------------------------------------------
@@ -116,6 +118,7 @@ _C.SOLVER.CYCLICAL_LR = CN()
 _C.SOLVER.CYCLICAL_LR.ENABLE = True
 _C.SOLVER.CYCLICAL_LR.MAX_LR = 0.1
 _C.SOLVER.CYCLICAL_LR.FACTOR = 2                # [2, 8]
+_C.SOLVER.CYCLICAL_LR.MODE = 'cycle'
 _C.SOLVER.CYCLICAL_LR.SCALE_FN = 'fixed_decay'  # linear | fixed_decay
 _C.SOLVER.CYCLICAL_LR.MODE = 'cycle'            # cycle | iterations  
 # LR Scheduler Exponential Decay

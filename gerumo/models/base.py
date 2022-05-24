@@ -1,15 +1,14 @@
 from abc import abstractmethod
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Tuple
 import logging
-from pathlib import Path
 
-import tensorflow as tf
 import sklearn
+import numpy as np
+import tensorflow as tf
 from fvcore.common.registry import Registry
 
-from gerumo.data.generators import BaseGenerator
 from gerumo.data.constants import TELESCOPES
-from ..config.config import configurable
+from ..config.config import configurable, get_cfg
 from ..utils.structures import (
     Event, InputShape, Observations, Pointing, ReconstructionMode, Task, Telescope
 )
@@ -74,7 +73,10 @@ class LoadableModel:
             x = [tf.keras.Input(shape=s_i[1:]) for s_i in self._input_shape.get()]
             x = x[0] if len(x) == 1 else x
             # TODO: check list [x] vs x
-            self._model = tf.keras.Model(inputs=[x], outputs=self.call(x))
+            try:
+                self._model = tf.keras.Model(inputs=[x], outputs=self.call(x))
+            except:
+                self._model = tf.keras.Model(inputs=x, outputs=self.call(x))
         return self._model
 
     def summary(self):
@@ -162,7 +164,7 @@ class BaseModel(LoadableModel, tf.keras.Model):
                 return prediction, y, uncertainty
             return prediction
     
-    def uncertainty(self, y_pred: tf.Tensor):
+    def uncertainty(self, y_pred: tf.Tensor) -> tf.Tensor:
         if self.task is Task.REGRESSION:
             # Compute Variance
             return self.compute_variance(y_pred)
@@ -173,11 +175,11 @@ class BaseModel(LoadableModel, tf.keras.Model):
             raise NotImplementedError
     
     @abstractmethod
-    def compute_variance(self, y_pred: tf.Tensor):
+    def compute_variance(self, y_pred: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod
-    def compute_predictive_entropy(self, y_pred: tf.Tensor):
+    def compute_predictive_entropy(self, y_pred: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod
@@ -247,31 +249,180 @@ The call is expected to return an :class:`BaseEnsembler`.
 """
 
 
-def build_ensembler(cfg) -> 'BaseEnsembler':
+def build_ensembler(cfg, input_shapes) -> 'BaseEnsembler':
     """
     Build Ensemblers defined by `cfg.ENSEMBLER.NAME`.
     """
     name = cfg.ENSEMBLER.NAME
-    return ENSEMBLER_REGISTRY.get(name)(cfg)
+    return ENSEMBLER_REGISTRY.get(name)(cfg, input_shapes)
 
 
 class BaseEnsembler:
-    pass
+    
+    @configurable
+    def __init__(self, input_shapes: Dict[Telescope, InputShape], task: Task,
+                 models: Dict[Telescope, BaseModel], telescopes: List[Telescope],
+                 pointing: Union[tuple, Pointing], weights: Optional[Dict[Telescope, str]] = None, **kwargs):
+        self.mode = ReconstructionMode.STEREO
+        self.task = task
+        self.pointing = pointing
+        self.telescopes = telescopes
+        self.weights_paths = weights
+        self.input_shapes = input_shapes
+        self.enable_fit_mode = False
+        self.models = models
 
+    @classmethod
+    def from_config(cls, cfg, input_shapes):
+        config = {
+            'input_shapes': input_shapes,
+            'task': Task[cfg.MODEL.TASK],
+            'pointing': Pointing(*cfg.DATASETS.POINTING),
+        }
+        config['telescopes'] = []
+        config['models'] = {}
+        config['weights'] = {}
+        for telelescope_type, model_cfg_file, model_weight in zip(cfg.ENSEMBLER.TELESCOPES, cfg.ENSEMBLER.ARCHITECTURES, cfg.ENSEMBLER.WEIGHTS):
+            telescope = TELESCOPES[telelescope_type]
+            config['telescopes'].append(telescope)
+            config['models'][telescope] = cls._load_model(model_cfg_file, model_weight, telescope, input_shapes[telescope])
+            config['weights'][telescope] = model_weight
+        return config
 
-def load_model(model: BaseModel, generator: BaseGenerator, output_dir: Union[Path, str], epoch_idx: int = -1):
-    """Load model's weights from a checkpoint at given epoch."""
-    checkpoints = sorted(list(Path(output_dir).glob('weights/*.h5')))
-    if len(checkpoints) == 0:
-        raise ValueError('Model doesn`t have checkpoints')
-    if epoch_idx >= 0 and len(checkpoints) <= epoch_idx:
-        raise ValueError(f'Epoch_idx should be in [0, {len(checkpoints)}) or -1: {epoch_idx}')
-    checkpoint = checkpoints[epoch_idx]
-    X = generator[0][0]
-    _ = model(X)
-    try:
-        model.load_weights(checkpoint)
-    except ValueError:
-        model._get_model()
-        model.load_weights(checkpoint)
-    return model
+    @classmethod
+    def _load_model(cls, model_cfg_file, model_weights, telescope, input_shape):
+        model_cfg = get_cfg()
+        model_cfg.merge_from_file(model_cfg_file)
+        model_cfg.freeze()
+        assert telescope.type == model_cfg.MODEL.TELESCOPES[0]
+        model = build_model(model_cfg, input_shape)
+        model.fit_mode()
+        model(cls._model_sample(input_shape))
+        if model_weights is not None:
+            try:
+                model.load_weights(model_weights)
+            except ValueError:
+                model._get_model()
+                model.load_weights(model_weights)
+        model.evaluation_mode()
+        return model
+    
+    @classmethod
+    def _model_sample(cls, input_shape):
+        X = []
+        if input_shape.has_image():
+            X.append(
+                np.random.random((1, *input_shape.images_shape[1:]))
+            )
+        if input_shape.has_features():
+            X.append(
+                np.random.random((1, *input_shape.features_shape[1:]))
+            )
+        return X[0] if len(X) == 1 else tuple(X)
+    
+    @abstractmethod
+    def ensemble(self, models_outputs: tf.Tensor) -> tf.Tensor:
+        """Combine the outputs for a single event"""
+        pass
+
+    def postprocess_output(self, y_ensembled: tf.Tensor) -> tf.Tensor:
+        """Convert output tensor into a prediction."""
+        if self.task is Task.REGRESSION:
+            # Convert into a vector
+            return self.point_estimation(y_ensembled)
+        elif self.task is Task.CLASSIFICATION:
+            # Convert into categorical
+            return self.categorical_estimation(y_ensembled)
+        else:
+            raise NotImplementedError
+
+    @abstractmethod
+    def point_estimation(self, y_ensembled: tf.Tensor) -> tf.Tensor:
+        """Convert the ensembler regression output into a point form.
+        
+        This method is handy for custom output formats like umonne or bmo
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def categorical_estimation(self, y_ensembled: tf.Tensor) -> tf.Tensor:
+        """Convert the ensembler regression output into a point form.
+        
+        This method is handy for custom output formats like umonne or bmo
+        """
+        raise NotImplementedError
+
+    def uncertainty(self, y_ensembled: tf.Tensor) -> tf.Tensor:
+        if self.task is Task.REGRESSION:
+            # Compute Variance
+            return self.compute_variance(y_ensembled)
+        elif self.task is Task.CLASSIFICATION:
+            # Compute predictive entropy
+            return self.compute_predictive_entropy(y_ensembled)
+        else:
+            raise NotImplementedError
+    
+    @abstractmethod
+    def compute_variance(self, y_ensembled: tf.Tensor) -> tf.Tensor:
+        """Variance for regression output."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def compute_predictive_entropy(self, y_ensembled: tf.Tensor) -> tf.Tensor:
+        """Predictive entropy for classification output."""
+        raise NotImplementedError
+
+    def __call__(self, X: List[Observations], uncertainty: bool = True) -> Union[tf.Tensor, Tuple[tf.Tensor, tf.Tensor, tf.Tensor]]:
+        """Compute the predictions for each observation and ensemble the predictions
+        into a single output.
+
+        Args:
+            X (List[Observations]): Stereo observations with multiples images
+                per event.
+            uncertainty (bool, optional): If is True, compute the uncertainty and
+                return the raw prediction `y_ensembled`, the postprocess output
+                `ensembled_prediction` and the `ensembled_uncertainty`.
+                Defaults to `True`.
+
+        Returns:
+            Union[tf.Tensor, Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+                If `uncertainty` is `True`:
+                    `ensembled_prediction`, `y_ensembled`, `ensembled_uncertainty`
+                else:
+                    `ensembled_prediction`
+        """
+        X_by_telescope = Observations.list_to_tensor(self.mode, X, self.telescopes)
+        # For each event
+        ensembled_predictions = []
+        ys_ensembled = []
+        ensembled_uncertainties = []
+        for X_by_telescope_event_i in X_by_telescope:
+            # Telescope model predictions
+            models_outputs = []
+            for telescope in self.telescopes:
+                # Get the observations of a single telescope type
+                telescope_inputs = X_by_telescope_event_i[telescope]
+                if telescope_inputs is None:
+                    continue
+                # Predict the raw output with the corresponding model
+                _, y, _ = self.models[telescope](telescope_inputs, uncertainty=True)
+                models_outputs.append(y)
+            # Ensemble all predictions into a single prediction
+            models_outputs = tf.concat(models_outputs, axis=0)
+            y_ensembled = self.ensemble(models_outputs)
+            # Compute point estimation
+            ensembled_prediction = self.postprocess_output(y_ensembled)
+            # Return raw prediction and uncertainty?
+            if uncertainty:
+                # Compute uncertainty of the ensembled prediction
+                ensembled_uncertainty = self.uncertainty(y_ensembled)
+                # Store event prediction
+                ensembled_predictions.append(ensembled_prediction)
+                ys_ensembled.append(y_ensembled)
+                ensembled_uncertainties.append(ensembled_uncertainty)
+            else:
+                # Store event prediction
+                ensembled_predictions.append(ensembled_prediction)
+        if uncertainty:
+            return tf.concat(ensembled_predictions, axis=0), tf.concat(ys_ensembled, axis=0), tf.concat(ensembled_uncertainties, axis=0)
+        return tf.concat(ensembled_predictions, axis=0)

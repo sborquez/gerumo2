@@ -1,5 +1,5 @@
 astropy
-ctaplot==0.5.6
+ctaplot==0.6.1
 fvcore
 h5py
 keras==2.6.0
