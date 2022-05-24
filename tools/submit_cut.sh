@@ -58,11 +58,15 @@ module load cuda/11.2
 module load cudnn/8.1_cuda-11.2
 
 export LD_LIBRARY_PATH=/home/ir-riqu1/TensorRT/TensorRT-6.0.1.5/lib:$LD_LIBRARY_PATH
-#! Full path to application executable: 
-application="singularity exec --nv /home/ir-riqu1/rds/rds-iris-ip007/ir-borq1/gerumo2-fixed.sif python /home/ir-riqu1/gerumo2/tools/apply_cuts.py -i /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_TEST -o /home/ir-riqu1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_TEST_cut1000 -T 1000 -C hillas_intensity"
+#! Full path to application executable:
+rds_dir="$HOME/rds/rds-iris-ip007"
+gerumo_dir="$HOME/gerumo2"
+singularity_sif="$HOME/rds/rds-iris-ip007/ir-borq1/gerumo2-fixed.sif"
+script="$gerumo_dir/tools/apply_cuts.py"
+application="singularity exec --nv $singularity_sif python $script"
 
 #! Run options for the application:
-options=""
+options="-i $rds_dir/ir-borq1/DL1_Prod5_GammaDiffuse/all -o $rds_dir/ir-borq1/DL1_Prod5_GammaDiffuse/cut_hillas_intensity_1000 -T 1000 -C hillas_intensity"
 
 #! Work directory (i.e. where the job will run):
 workdir="$SLURM_SUBMIT_DIR"  # The value of SLURM_SUBMIT_DIR sets workdir to the directory

@@ -283,14 +283,14 @@ def build_optimizer(cfg: CfgNode, steps_per_epoch: int = 1) -> optimizers.Optimi
     if cfg.SOLVER.CYCLICAL_LR.ENABLE:
         scale_functions = {
             'linear': lambda x: 1,
-            'fixed_decay': lambda x: 1 / (2.0**(x - 1))
+            'fixed_decay': lambda x: 1 / (2.0**(tf.cast(x, tf.float32) - 1))
         }
         lr_scheduler = tfa.optimizers.CyclicalLearningRate(
             initial_learning_rate=cfg.SOLVER.BASE_LR,
             maximal_learning_rate=cfg.SOLVER.CYCLICAL_LR.MAX_LR,
             step_size=cfg.SOLVER.CYCLICAL_LR.FACTOR * steps_per_epoch,
             scale_fn=scale_functions[cfg.SOLVER.CYCLICAL_LR.SCALE_FN],
-            scale_mode='cycle'
+            scale_mode=cfg.SOLVER.CYCLICAL_LR.MODE
         )
     elif cfg.SOLVER.LR_EXPDECAY.ENABLE:
         lr_scheduler = optimizers.schedules.ExponentialDecay(

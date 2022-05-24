@@ -33,7 +33,12 @@ def main(args):
         evaluation_dataset_name = 'validation'
     else:
         evaluation_dataset_name = 'test'
-    evaluation_dir = evaluation_dir / evaluation_dataset_name
+    if args.dataset_name is not None:
+        evaluation_subfolder = args.dataset_name
+    else:
+        evaluation_subfolder = evaluation_dataset_name
+    evaluation_dir = evaluation_dir / evaluation_subfolder
+    
     evaluation_dir.mkdir(exist_ok=True)
     # Build evaluation dataset
     evaluation_dataset = build_dataset(cfg, evaluation_dataset_name)
@@ -57,7 +62,7 @@ def main(args):
         events += Event.add_prediction_list(event_true, predictions, model.task)
         uncertainties += [u for u in uncertainty.numpy()]
     evaluation_results = Event.list_to_dataframe(events)
-    evaluation_results.to_csv(evaluation_dir / 'results.csv')
+    evaluation_results.to_csv(evaluation_dir / 'results.csv', index=False)
     
     evaluation_time = (time.time() - start_time) / 60.0
     logger.info(f'Evaluation time: {evaluation_time:.3f} [min]')
@@ -91,6 +96,8 @@ if __name__ == '__main__':
                         help='Which epoch use to evaluate.')
     parser.add_argument('--use_validation', action='store_true',
                         help='Use "validation set" instead of "test set"')
+    parser.add_argument('--dataset_name', default=None, type=str,
+                        help='Test dataset name, it used for naming the evaluation folder.')
     parser.add_argument(
         'opts',
         help="""
