@@ -12,7 +12,7 @@ from ..utils.structures import Event, OutputType
 
 
 def event_regression(event: Event, model_output: tf.Tensor, output_type: OutputType, 
-                     targets: List[str], targets_domains: List[List[int]], save_to: Optional[bool] = None) -> None:
+                     targets: List[str], targets_domains: List[List[int]], save_to: Optional[str] = None) -> None:
     """
     Display event prediction, the probability and the predicted point.
     """

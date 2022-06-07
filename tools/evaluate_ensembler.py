@@ -34,17 +34,16 @@ def main(args):
         evaluation_subfolder = args.dataset_name
     else:
         evaluation_subfolder = evaluation_dataset_name
-    if args.min_obs > 1:
-        evaluation_subfolder += f'_min_obs_{args.min_obs}'
     evaluation_dir = evaluation_dir / evaluation_subfolder
     evaluation_dir.mkdir(exist_ok=True)
+    
+    # Copy config
+    with open(evaluation_dir / 'config.yml', 'w') as cfg_file:
+        cfg_file.write(cfg.dump())
 
     # Build evaluation dataset
     evaluation_dataset = build_dataset(cfg, evaluation_dataset_name)
-    # Filte by number of observations
-    evaluation_dataset = evaluation_dataset[
-        evaluation_dataset.groupby('event_unique_id').event_id.transform('size') >= args.min_obs
-    ]
+
     describe_dataset(evaluation_dataset, logger, save_to=evaluation_dir / 'description.txt')
     
     # Setup Generators
@@ -65,6 +64,7 @@ def main(args):
         uncertainties += [u for u in uncertainty.numpy()]
     evaluation_results = Event.list_to_dataframe(events)
     evaluation_results['uncertainty'] = uncertainties
+    evaluation_results = evaluation_results.merge(evaluation_dataset.groupby('event_unique_id').size().rename('cardinality'), on='event_unique_id')
     evaluation_results.to_csv(evaluation_dir / 'results.csv', index=False)
     
     evaluation_time = (time.time() - start_time) / 60.0
@@ -100,8 +100,6 @@ if __name__ == '__main__':
                         help='Use "validation set" instead of "test set"')
     parser.add_argument('--dataset_name', default=None, type=str,
                         help='Test dataset name, it used for naming the evaluation folder.')
-    parser.add_argument('--min_obs', default=1, type=int,
-                        help='The minimum number of observations for event.')
     parser.add_argument(
         'opts',
         help="""
@@ -114,3 +112,4 @@ For python-based LazyConfig, use 'path.key=value'.
     )
     args = parser.parse_args()
     main(args)
+# python evaluate_ensembler.py --config-file /home/asuka/projects/gerumo2/config/regression/umonne/umonne_ensembler.yml --use_validation

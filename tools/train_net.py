@@ -2,7 +2,7 @@ import sys; sys.path.append('..') # noqa
 import os
 import time
 
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = '1'
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 from gerumo.data.dataset import describe_dataset
 from gerumo.data.generators import build_generator
@@ -20,26 +20,42 @@ def main(args):
     output_dir = setup_experiment(cfg)
     logger = setup_environment(cfg)
     # Load datasets
+    logger.info(f'Loading datasests')
+    start_time = time.time()
     train_dataset = build_dataset(cfg, 'train')
     describe_dataset(train_dataset, logger,
                      save_to=output_dir / 'train_description.txt')
     validation_dataset = build_dataset(cfg, 'validation')
     describe_dataset(validation_dataset, logger,
                      save_to=output_dir / 'validation_description.txt')
+    dataset_time = (time.time() - start_time) / 60.
+    logger.info(f'Time used: {dataset_time} [min]')
     # Setup Generators
+    logger.info(f'Loading generators')
+    start_time = time.time()
     train_generator = build_generator(cfg, train_dataset)
     validation_generator = build_generator(cfg, validation_dataset)
+    generator_time = (time.time() - start_time) / 60.
+    logger.info(f'Time used: {generator_time} [min]')
     # Build model
+    logger.info(f'Building model')
+    start_time = time.time()
     input_shape = train_generator.get_input_shape()
     model = build_model(cfg, input_shape)
     output_dim = model.get_output_dim()
+    build_time = (time.time() - start_time) / 60.
+    logger.info(f'Time used: {build_time} [min]')
     # Build solver tools
+    logger.info(f'Compiling')
+    start_time = time.time()
     callbacks = build_callbacks(cfg)
     metrics = build_metrics(cfg, model=model)
     optimizer = build_optimizer(cfg, len(train_generator))
     loss = build_loss(cfg, output_dim)
     # Compile model
     model = setup_model(model, train_generator, optimizer, loss, metrics)
+    compiling_time = (time.time() - start_time) / 60.
+    logger.info(f'Time used: {compiling_time} [min]')
     # Star Training
     train_generator.fit_mode()
     validation_generator.fit_mode()
