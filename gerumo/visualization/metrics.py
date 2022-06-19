@@ -257,7 +257,8 @@ CTA Metrics
 """
 
 
-def reconstruction_resolution(evaluation_results, targets, use_pred_energy=False, save_to=None, **kwargs):
+def reconstruction_resolution(evaluation_results, targets, use_pred_energy=False, save_to=None, figure=None, **kwargs):
+    skip_show_or_save = figure is not None
     # Angular Resolution
     if set(['az', 'alt']).issubset(targets):
         if use_pred_energy:
@@ -265,8 +266,7 @@ def reconstruction_resolution(evaluation_results, targets, use_pred_energy=False
             energy_col = 'pred_energy'
         else:
             energy_col = 'true_energy'
-        figure = plt.figure(figsize=(6, 6))
-        
+        figure = figure or plt.figure(figsize=(6, 6))        
         add_angular_resolution(
             pred_alt=evaluation_results['pred_alt'].values * u.deg,
             pred_az=evaluation_results['pred_az'].values * u.deg,
@@ -276,17 +276,19 @@ def reconstruction_resolution(evaluation_results, targets, use_pred_energy=False
             ax=plt.gca(),
             **kwargs
         )
-        show_or_save(figure, save_to, 'Angular Resolution.png')
+        if not skip_show_or_save:
+            show_or_save(figure, save_to, 'Angular Resolution.png')
     # Energy Resolution
     if 'energy' in targets:
-        figure = plt.figure(figsize=(6, 6))
+        figure = figure or plt.figure(figsize=(6, 6))
         add_angular_resolution(
             pred_energy=evaluation_results['pred_energy'].values * u.TeV,
             true_energy=evaluation_results['true_energy'].values * u.TeV,
             ax=plt.gca(),
             **kwargs
         )
-        show_or_save(figure, save_to, 'Energy Resolution.png')
+        if not skip_show_or_save:
+            show_or_save(figure, save_to, 'Energy Resolution.png')
     
 
 def add_angular_resolution(pred_alt, pred_az, true_alt, true_az, energy,
