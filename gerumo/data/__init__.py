@@ -1,0 +1,1 @@
+from .tfrecords import GENERATOR_REGISTRY
