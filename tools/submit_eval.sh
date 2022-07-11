@@ -78,27 +78,99 @@ then
     options="$options"
 else
     case $dataset in
-        test_gm_full)
-            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd/events"
-            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd/telescopes"
+        test_gd_full)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/telescopes"
             data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
             ;;
 
-        test_gm_cut1000)
-            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd_cut1000/events"
-            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_gd_cut1000/telescopes"
+        test_gd_full_1)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/events_1.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/telescopes_1.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+
+        test_gd_full_2)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/events_2.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/telescopes_2.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+        
+        test_gd_full_3)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/events_3.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/all/telescopes_3.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+
+        test_gd_cut1000)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/telescopes"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+
+        test_gd_cut1000_1)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/events_1.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/telescopes_1.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+
+        test_gd_cut1000_2)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/events_2.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/telescopes_2.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
+            ;;
+
+        test_gd_cut1000_3)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/events_3.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_GammaDiffuse_Test/cut_hillas_intensity_1000/telescopes_3.parquet"
             data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma-diffuse/test"
             ;;
 
         test_g_full)
-            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g/events"
-            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g/telescopes"
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/telescopes"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+
+        test_g_full_1)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/events_1.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/telescopes_1.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+
+        test_g_full_2)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/events_2.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/telescopes_2.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+
+        test_g_full_3)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/events_3.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/all/telescopes_3.parquet"
             data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
             ;;
 
         test_g_cut1000)
-            events="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g_cut1000/events"
-            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-riqu1/Prod5-parquets/output_T_g_cut1000/telescopes"
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/events"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/telescopes"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+
+        test_g_cut1000_1)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/events_1.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/telescopes_1.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+
+        test_g_cut1000_2)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/events_2.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/telescopes_2.parquet"
+            data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
+            ;;
+
+        test_g_cut1000_3)
+            events="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/events_3.parquet"
+            telescopes="/home/ir-borq1/rds/rds-iris-ip007/ir-borq1/DL1_Prod5_Gamma_Test/cut_hillas_intensity_1000/telescopes_3.parquet"
             data_folder="/home/ir-borq1/rds/rds-iris-ip007/ir-niet1/datasets/DL1_Prod5/gamma/test"
             ;;
     esac

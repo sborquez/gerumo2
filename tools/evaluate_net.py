@@ -4,8 +4,9 @@ import os
 import time
 from tqdm import tqdm
 
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = '1'  # noqa
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'  # noqa
 
+import numpy as np
 from gerumo.data.dataset import describe_dataset
 from gerumo.data.generators import build_generator
 from gerumo.models.base import build_model
@@ -14,6 +15,7 @@ from gerumo.utils.engine import (
     setup_cfg, setup_environment, setup_experiment, load_model, build_dataset
 )
 from gerumo.visualization import metrics
+from gerumo.visualization.samples import event_regression
 
 
 def main(args):
@@ -52,15 +54,34 @@ def main(args):
     model = build_model(cfg, input_shape)
     model = load_model(model, evaluation_generator, output_dir, args.epoch)
     
+    # Sampling
+    n_samples = 15
+    random_state = np.random.RandomState(18061996)
+    batch_samples = random_state.randint(len(evaluation_generator) - 1, size=n_samples)
+
     # Evaluation
     start_time = time.time()
     events = []
     uncertainties = []
-    for X, event_true in tqdm(evaluation_generator):
-        predictions, _, uncertainty = model(X, uncertainty=True)
-        events += Event.add_prediction_list(event_true, predictions, model.task)
+    for i, (X, event_true) in enumerate(tqdm(evaluation_generator)):
+        predictions, y, uncertainty = model(X, uncertainty=True)
+        event_predictions = Event.add_prediction_list(event_true, predictions, model.task)
+        events += event_predictions
         uncertainties += [u for u in uncertainty.numpy()]
+        if (model.task is Task.REGRESSION) and (i in batch_samples):
+            j = random_state.randint(len(X))
+            targets = cfg.OUTPUT.REGRESSION.TARGETS
+            targets_domains = cfg.OUTPUT.REGRESSION.TARGETS_DOMAINS
+            # Event true and prediction
+            event = event_predictions[j]
+            model_output = y[j]
+            event_regression(
+                event, model_output, model.REGRESSION_OUTPUT_TYPE, targets,
+                targets_domains, save_to=str(evaluation_dir)
+            )
     evaluation_results = Event.list_to_dataframe(events)
+    evaluation_results['uncertainty'] = uncertainties
+    evaluation_results['cardinality'] = 1 
     evaluation_results.to_csv(evaluation_dir / 'results.csv', index=False)
     
     evaluation_time = (time.time() - start_time) / 60.0
