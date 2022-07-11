@@ -61,8 +61,9 @@ _C.DATASETS.AGGREGATION.IGNORE_BY_DOMAINS = True
 # Generator
 # -----------------------------------------------------------------------------
 _C.GENERATOR = CN()
-# Number of data loading threads
 _C.GENERATOR.NAME = "MonoGenerator"
+_C.GENERATOR.KWARGS = []  # [(str, Any), ...]
+# Number of data loading threads
 _C.GENERATOR.NUM_WORKERS = 1
 # Shuffle Dataset
 _C.GENERATOR.ENABLE_SHUFFLE = True

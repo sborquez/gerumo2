@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from itertools import repeat
 from enum import IntEnum, unique
@@ -67,6 +68,29 @@ class InputShape:
             feat_shape = self.features_shape
             shape.append(feat_shape)
         return shape
+    
+    def get_dict(self):
+        shape = {}
+        if self.has_image():
+            shape['images_shape'] = self.images_shape
+        if self.has_features():
+            shape['features_shape'] = self.features_shape
+        shape['batch_size'] = self.batch_size
+        return shape
+
+    def from_dict(self, dict_shape):
+        self.images_shape = dict_shape.get('images_shape', None)
+        self.features_shape = dict_shape.get('features_shape', None)
+        self.batch_size = dict_shape.get('batch_size', None)
+
+    def dump(self, fp):
+        json.dump(self.get_dict(), fp)
+
+    @classmethod
+    def load(cls, fp):
+        input_shape  = cls(None, None, None)
+        input_shape.from_dict(json.load(fp))
+        return input_shape
 
 
 class Event:

@@ -6,13 +6,14 @@ This modele define generator (keras.Sequential) to feed differents
 models, with their defined input format.
 """
 
-from abc import abstractmethod
 import logging
+from abc import abstractmethod
+from typing import Any, List, Tuple, Union, Optional
+
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 from fvcore.common.registry import Registry
-from typing import Any, List, Tuple, Union
 
 from gerumo.data.constants import TELESCOPES
 from ..config.config import configurable
@@ -36,11 +37,13 @@ The call is expected to return an :class:`BaseGenerator`.
 """
 
 
-def build_generator(cfg, dataset) -> 'BaseGenerator':
+def build_generator(cfg, dataset, subset: Optional[str] = None) -> Union['BaseGenerator', Tuple[tf.data.Dataset, Any, int]]:
     """
     Build Generators defined by `cfg.GENERATOR.NAME`.
     """
     name = cfg.GENERATOR.NAME
+    if subset is not None:
+        return GENERATOR_REGISTRY.get(name)(cfg, dataset, subset)
     return GENERATOR_REGISTRY.get(name)(cfg, dataset)
 
 
@@ -150,6 +153,8 @@ class MonoGenerator(BaseGenerator):
         return observations, events
 
     def get_input_shape(self) -> Union[InputShape, Any]:
+        prev_mode = self.enable_fit_mode
+        self.verbose_mode()
         obs_tensors = self[0][0][0].to_tensor()
         images_shape, features_shape = None, None
         # it has image
@@ -162,6 +167,7 @@ class MonoGenerator(BaseGenerator):
             features_shape = (None, *(obs_tensors[-1].shape))
         input_shape = InputShape(images_shape, features_shape)
         input_shape.set_batch_size(self.batch_size)
+        self.enable_fit_mode = prev_mode
         return input_shape
 
     def on_epoch_end(self) -> np.ndarray:

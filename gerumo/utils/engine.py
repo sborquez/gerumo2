@@ -110,11 +110,15 @@ def setup_experiment(cfg: CfgNode, training: bool = True, ensemble: bool=False) 
     return new_output_dir
 
 
-def setup_model(model: BaseModel, generator: BaseGenerator, optimizer: optimizers.Optimizer,
+def setup_model(model: BaseModel, generator: Union[BaseGenerator, tf.data.Dataset], optimizer: optimizers.Optimizer,
                 loss: Any, metrics: list) -> BaseModel:
     """Build models defining layers shapes and compile it."""
-    X = generator[0][0]
-    _ = model(X)
+    if isinstance(generator, BaseGenerator):
+        X = generator[0][0]
+        _ = model(X)
+    elif isinstance(generator, tf.data.Dataset):
+        X = next(iter(generator))[0]
+        _ = model(X)
     model.compile(
         optimizer=optimizer,
         loss=loss,
