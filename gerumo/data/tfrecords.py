@@ -1,5 +1,6 @@
 import os
 from functools import partial
+from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
@@ -40,6 +41,33 @@ def generator_to_record(dataset_generator, dataset_split, output_dir, samples_pe
             writer = tf.io.TFRecordWriter(record_file)
         tf_example = observation_to_example(x, y, input_shape)
         writer.write(tf_example.SerializeToString())
+
+
+def _task(generator, start, end, record_file, input_shape):
+    writer = tf.io.TFRecordWriter(record_file)
+    for i in range(start, end):
+        x, y = generator[i]
+        tf_example = observation_to_example(x, y, input_shape)
+        writer.write(tf_example.SerializeToString())
+    writer.close()
+
+
+def generator_to_record_mp(dataset_generator, dataset_split, output_dir, samples_per_file, input_shape, workers=25):
+    assert input_shape.batch_size == 1
+    shape_file = os.path.join(output_dir, f'input_shape.json')
+    with open(shape_file, 'w') as f:
+        input_shape.dump(f)
+    args = []
+    for i in range(0, len(dataset_generator), samples_per_file):
+        args.append((
+            dataset_generator,
+            i,
+            min(i+samples_per_file, len(dataset_generator)),
+            os.path.join(output_dir, f'{dataset_split}_{i//samples_per_file:04}.tfrecords'),
+            input_shape
+        ))
+    with Pool(workers) as pool:
+        pool.starmap(_task, args)
 
 
 def example_to_observation(example, input_shape, num_targets):

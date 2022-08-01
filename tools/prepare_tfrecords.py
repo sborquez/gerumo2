@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from gerumo.data.dataset import describe_dataset
-from gerumo.data.tfrecords import generator_to_record
+from gerumo.data.tfrecords import generator_to_record_mp as generator_to_record
 from gerumo.data.generators import build_generator
 from gerumo.utils.engine import (
     setup_cfg, setup_environment, build_dataset
@@ -16,6 +16,7 @@ def main(args):
     cfg = setup_cfg(args)
     cfg.defrost()
     cfg.SOLVER.BATCH_SIZE = 1
+    cfg.OUTPUT_DIR = args.output_dir
     cfg.freeze()
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=False)
