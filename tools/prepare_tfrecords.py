@@ -14,6 +14,9 @@ from gerumo.utils.engine import (
 def main(args):
     # Setup
     cfg = setup_cfg(args)
+    cfg.defrost()
+    cfg.SOLVER.BATCH_SIZE = 1
+    cfg.freeze()
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=False)
     samples_per_file = args.samples_per_file
@@ -32,12 +35,12 @@ def main(args):
     ## Training
     dataset_split = 'train'
     dataset_generator = train_generator
-    describe_dataset(dataset_generator, logger, save_to=output_dir / f'{dataset_split}_description.txt')
+    describe_dataset(train_dataset, logger, save_to=output_dir / f'{dataset_split}_description.txt')
     generator_to_record(dataset_generator, dataset_split, output_dir, samples_per_file, input_shape)    
     ## Validation
     dataset_split = 'validation'
     dataset_generator = validation_generator
-    describe_dataset(dataset_generator, logger, save_to=output_dir / f'{dataset_split}_description.txt')
+    describe_dataset(validation_dataset, logger, save_to=output_dir / f'{dataset_split}_description.txt')
     generator_to_record(dataset_generator, dataset_split, output_dir, samples_per_file, input_shape)
     convertion_time = (time.time() - start_time) / 60.0
     logger.info(f'Convertion time: {convertion_time:.3f} [min]')

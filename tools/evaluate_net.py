@@ -25,6 +25,10 @@ def main(args):
         args.config_file = os.path.join(args.config_file, 'config.yml')
     # Load the configurations
     cfg = setup_cfg(args)
+    cfg.defrost()
+    cfg.GENERATOR.NAME = 'MonoGenerator'
+    cfg.GENERATOR.KWARGS = []
+    cfg.freeze()
     output_dir, evaluation_dir = setup_experiment(cfg, training=False)
     logger = setup_environment(cfg)
 

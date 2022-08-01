@@ -1,16 +1,38 @@
 #!/bin/bash
 
 experiments=(
-    # New Baseline
+    # Baseline
+    # Cut
+    ## cnn
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/sst/20220712_142834_cnn_sst_cut_regression
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/mst/20220712_142834_cnn_mst_cut_regression
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/lst/20220712_142834_cnn_lst_cut_regression
+    ## umonne large
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_large/sst/20220712_143810_umonne_large_sst_cut_regression
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_large/mst/20220712_143154_umonne_large_mst_cut_regression
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_large/lst/20220712_142834_umonne_large_lst_cut_regression
+    ## umonne small
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_small/sst/20220712_145120_umonne_small_sst_cut_regression
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_small/mst/20220712_144829_umonne_small_mst_cut_regression
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_small/lst/20220712_144824_umonne_small_lst_cut_regression
+    # Full
+    ## cnn
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/lst/20220712_142834_cnn_lst_full_regression
+    ## umonne large
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_large/lst/20220712_143154_umonne_large_lst_full_regression
+    ## umonne small
+    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne_small/lst/20220712_144826_umonne_small_lst_full_regression
+
+    # Small experiments
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/lst/20220510_051438_cnn_lst_pe_regression
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/mst/20220510_051437_cnn_mst_pe_regression
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/sst/20220510_051437_cnn_sst_pe_regression
-    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/lst/20220616_164915_cnn_lst_pe_full_regression
+    # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/lst/20220616_164915_cnn_lst_pe_full_regression
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne/lst/20220510_051437_umonne_lst_pe_regression
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne/mst/20220510_051440_umonne_mst_pe_regression
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne/sst/20220510_051438_umonne_sst_pe_regression
-    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne/lst/20220616_164915_umonne_lst_pe_full_regression
-    /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne/lst/20220616_164941_umonne_lst_pe_big_full_regression
+    # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne/lst/20220616_164915_umonne_lst_pe_full_regression
+    # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/umonne/lst/20220616_164941_umonne_lst_pe_big_full_regression
 
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/lst/20220510_051437_cnn_lst_co_regression
     # /home/ir-borq1/rds/rds-iris-ip007/ir-borq1/new_baseline/cnn/mst/20220510_051441_cnn_mst_co_regression
@@ -55,7 +77,7 @@ experiments=(
 datasets=(
     test_gd_full
     test_gd_cut1000
-    test_g_full
+    #test_g_full
     test_g_cut1000
 )
 

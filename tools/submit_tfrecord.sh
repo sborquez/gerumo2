@@ -66,12 +66,7 @@ script="$gerumo_dir/tools/prepare_tfrecords.py"
 application="singularity exec --nv $singularity_sif python $script"
 
 #! Run options for the application:
-if [ -z "$experiment" ];
-then
-    options="--config-file /home/ir-borq1/experiments/grid_search/umonne/N_ADAM_B3_M2_I8_C2_D4.yml"
-else
-    options="--config-file $experiment --output_dir $output_dir"
-fi
+options="--config-file $experiment --output_dir $output_dir"
 
 #! Work directory (i.e. where the job will run):
 workdir="$SLURM_SUBMIT_DIR"  # The value of SLURM_SUBMIT_DIR sets workdir to the directory
